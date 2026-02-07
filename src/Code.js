@@ -435,9 +435,16 @@ function doLottery(phone) {
 // 登录验证（带权限）
 function adminLogin(username, password) {
   var d = getSheet(SH.STAFF).getDataRange().getValues();
-  
+
   for (var i = 1; i < d.length; i++) {
-    if (String(d[i][2]) === username && String(d[i][3]) === password && d[i][5] === '启用') {
+    var sheetUser = String(d[i][2]).trim();
+    var sheetPass = String(d[i][3]).trim();
+    var sheetStatus = String(d[i][5]).trim();
+
+    if (sheetUser === username.trim() && sheetPass === password.trim()) {
+      if (sheetStatus !== '启用') {
+        return { success: false, message: '账号已停用，请联系管理员' };
+      }
       getSheet(SH.STAFF).getRange(i + 1, 8).setValue(new Date());
       addLog(d[i][1], d[i][4], '登录', '管理员登录');
       return {
@@ -446,12 +453,12 @@ function adminLogin(username, password) {
           id: d[i][0],
           name: d[i][1],
           username: d[i][2],
-          role: d[i][4] // Boss / Manager / Staff
+          role: String(d[i][4]).trim()
         }
       };
     }
   }
-  return { success: false, message: '账号或密码错误' };
+  return { success: false, message: '账号或密码错误（共' + (d.length - 1) + '个员工）' };
 }
 
 // 查询验证码

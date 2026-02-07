@@ -127,7 +127,7 @@
       <div class="login-error" id="loginError">账号或密码错误</div>
       <input type="text" id="username" placeholder="账号">
       <input type="password" id="password" placeholder="密码" onkeypress="if(event.keyCode==13)doLogin()">
-      <button onclick="doLogin()">登 录</button>
+      <button id="loginBtn" onclick="doLogin()">登 录</button>
     </div>
   </div>
   
@@ -407,16 +407,27 @@
       var u = document.getElementById('username').value.trim();
       var p = document.getElementById('password').value;
       if (!u || !p) { alert('请输入账号和密码'); return; }
-      
+
+      var btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = '登录中...';
+      document.getElementById('loginError').style.display = 'none';
+
       google.script.run.withSuccessHandler(function(r) {
+        btn.disabled = false;
+        btn.textContent = '登 录';
         if (r.success) {
           currentStaff = r.staff;
           showAdminPage();
         } else {
+          document.getElementById('loginError').textContent = r.message || '账号或密码错误';
           document.getElementById('loginError').style.display = 'block';
         }
       }).withFailureHandler(function(e) {
-        alert('登录失败: ' + e);
+        btn.disabled = false;
+        btn.textContent = '登 录';
+        document.getElementById('loginError').textContent = '登录失败: ' + e;
+        document.getElementById('loginError').style.display = 'block';
       }).adminLogin(u, p);
     }
     
