@@ -1121,6 +1121,17 @@ function loadTest100() {
   }
   var totalTime = new Date().getTime() - startTime;
 
+  // 3.5 将测试记录的WA状态标记为"测试"，防止真实发送
+  var rshMark = getSheet(SH.RECORDS);
+  var rDataMark = rshMark.getDataRange().getValues();
+  for (var m = 1; m < rDataMark.length; m++) {
+    if (String(rDataMark[m][3]).indexOf('60199') === 0 && rDataMark[m][8] === '待发送') {
+      rshMark.getRange(m + 1, 9).setValue('测试');
+      rshMark.getRange(m + 1, 14).setValue('压力测试生成');
+    }
+  }
+  SpreadsheetApp.flush();
+
   // 4. 验证库存一致性
   SpreadsheetApp.flush();
   var afterPd = psh.getDataRange().getValues();
