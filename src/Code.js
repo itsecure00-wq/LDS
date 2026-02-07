@@ -1053,9 +1053,9 @@ function loadTest100() {
   var results = { success: 0, fail: 0, errors: [], prizeCount: {}, timings: [] };
   var testPhones = [];
 
-  // 1. 注册100个测试用户（6090开头 + 6位）
+  // 1. 注册100个测试用户（60199开头，符合MY手机格式 60[1-9]XXXXXXXX）
   for (var i = 0; i < 100; i++) {
-    var phone = '6090' + String(100000 + i);
+    var phone = '60199' + String(100000 + i);
     testPhones.push(phone);
   }
 
@@ -1162,12 +1162,13 @@ function loadTest100() {
 
 // 清理测试数据
 function cleanTestData() {
-  // 删除6090开头的测试用户
+  // 删除测试用户（60199开头和旧的6090开头）
   var sh = getSheet(SH.USERS);
   var data = sh.getDataRange().getValues();
   var rowsToDelete = [];
   for (var i = data.length - 1; i >= 1; i--) {
-    if (String(data[i][1]).indexOf('6090') === 0) rowsToDelete.push(i + 1);
+    var ph = String(data[i][1]);
+    if (ph.indexOf('60199') === 0 || ph.indexOf('6090') === 0) rowsToDelete.push(i + 1);
   }
   for (var d = 0; d < rowsToDelete.length; d++) {
     sh.deleteRow(rowsToDelete[d]);
@@ -1178,7 +1179,8 @@ function cleanTestData() {
   var rdata = rsh.getDataRange().getValues();
   var recRowsToDelete = [];
   for (var r = rdata.length - 1; r >= 1; r--) {
-    if (String(rdata[r][3]).indexOf('6090') === 0) recRowsToDelete.push(r + 1);
+    var rph = String(rdata[r][3]);
+    if (rph.indexOf('60199') === 0 || rph.indexOf('6090') === 0) recRowsToDelete.push(r + 1);
   }
   for (var rd = 0; rd < recRowsToDelete.length; rd++) {
     rsh.deleteRow(recRowsToDelete[rd]);
