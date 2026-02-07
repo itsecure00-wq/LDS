@@ -4,6 +4,8 @@
  * 功能：15格抽奖、积分30天过期、防重复邀请、权限分级
  */
 
+var APP_VERSION = 'v42';
+
 // ============ Web App 入口 ============
 function doGet(e) {
   var page = (e && e.parameter && e.parameter.page) || 'lottery';
@@ -433,6 +435,10 @@ function doLottery(phone) {
 // ============ 后台管理 ============
 
 // 登录验证（带权限）
+function getAppVersion() {
+  return APP_VERSION;
+}
+
 function adminLogin(username, password) {
   var d = getSheet(SH.STAFF).getDataRange().getValues();
 
@@ -449,6 +455,7 @@ function adminLogin(username, password) {
       addLog(d[i][1], d[i][4], '登录', '管理员登录');
       return {
         success: true,
+        version: APP_VERSION,
         staff: {
           id: d[i][0],
           name: d[i][1],
@@ -624,6 +631,22 @@ function getStatistics() {
     waPending: waPending,
     verifyRate: rec.length > 1 ? Math.round(verified / (rec.length - 1) * 100) : 0
   };
+}
+
+// 获取抽奖页奖品列表（前端显示用）
+function getLotteryPrizes() {
+  var d = getSheet(SH.PRIZES).getDataRange().getValues();
+  var prizes = [];
+  for (var i = 1; i < d.length; i++) {
+    if (d[i][0] && d[i][9] === '启用') {
+      prizes.push({
+        name: d[i][1],
+        icon: d[i][2] || '🎁',
+        isGrand: d[i][8] === true || d[i][8] === 'TRUE' || d[i][8] === '是'
+      });
+    }
+  }
+  return prizes;
 }
 
 // 奖品配置

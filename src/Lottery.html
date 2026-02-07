@@ -254,30 +254,23 @@
   </div>
 
   <script>
-    var prizes = [
-      { id: 1, name: '200元霸王餐', icon: '👑', isGrand: true },
-      { id: 2, name: '特级肥牛', icon: '🥩', isGrand: true },
-      { id: 3, name: '精品毛肚', icon: '🫀', isGrand: false },
-      { id: 4, name: '鲜切羊肉', icon: '🐑', isGrand: false },
-      { id: 5, name: '手工虾滑', icon: '🦐', isGrand: false },
-      { id: 6, name: '五花肉', icon: '🥓', isGrand: false },
-      { id: 7, name: '时蔬拼盘', icon: '🥬', isGrand: false },
-      { id: 8, name: '暴打柠檬茶', icon: '🍋', isGrand: false },
-      { id: 9, name: '酸梅汤', icon: '🧃', isGrand: false },
-      { id: 10, name: '冰豆花', icon: '🍮', isGrand: false },
-      { id: 11, name: '绵绵冰', icon: '🍧', isGrand: false },
-      { id: 12, name: '10元代金券', icon: '🎫', isGrand: false },
-      { id: 13, name: '5元代金券', icon: '🎟️', isGrand: false },
-      { id: 14, name: '小食一份', icon: '🍿', isGrand: false },
-      { id: 15, name: '麻辣锅底', icon: '🍲', isGrand: true }
-    ];
-    
+    var prizes = [];
+
     var currentUser = null, isSpinning = false, referrerCode = '', deploymentUrl = '', musicPlaying = false;
     var bgMusicUrl = '', firecrackerUrl = '', bgAudio = null;
 
+    // 随机打乱数组
+    function shuffleArray(arr) {
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+      }
+      return a;
+    }
+
     window.onload = function() {
       referrerCode = '<?= referrerCode ?>' || '';
-      renderGrid();
       createFallingItems();
       google.script.run.withSuccessHandler(function(url) { deploymentUrl = url; }).getDeploymentUrl();
       google.script.run.withSuccessHandler(function(s) {
@@ -285,6 +278,17 @@
         bgMusicUrl = s.bgMusicUrl || '';
         firecrackerUrl = s.firecrackerUrl || '';
       }).getMusicSettings();
+      // 从服务器加载奖品并随机排列
+      google.script.run.withSuccessHandler(function(serverPrizes) {
+        if (serverPrizes && serverPrizes.length > 0) {
+          prizes = shuffleArray(serverPrizes);
+        }
+        // 不足15格时补满
+        while (prizes.length < 15) {
+          prizes.push({ name: '惊喜奖', icon: '🎁', isGrand: false });
+        }
+        renderGrid();
+      }).getLotteryPrizes();
     };
     
     function renderGrid() {
