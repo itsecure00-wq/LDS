@@ -181,10 +181,10 @@
       <div class="card">
         <h3>📋 中奖记录</h3>
         <div class="list-filter">
-          <button class="filter-btn active" onclick="filterRecords('all')">全部</button>
-          <button class="filter-btn" onclick="filterRecords('pending')">待核销</button>
-          <button class="filter-btn" onclick="filterRecords('verified')">已核销</button>
-          <button class="filter-btn" onclick="filterRecords('expired')">已过期</button>
+          <button class="filter-btn active" onclick="filterRecords('all',this)">全部</button>
+          <button class="filter-btn" onclick="filterRecords('pending',this)">待核销</button>
+          <button class="filter-btn" onclick="filterRecords('verified',this)">已核销</button>
+          <button class="filter-btn" onclick="filterRecords('expired',this)">已过期</button>
         </div>
         <div class="data-list" id="recordList"><div class="empty-state"><div class="icon">📋</div><p>加载中...</p></div></div>
       </div>
@@ -195,9 +195,9 @@
       <div class="card">
         <h3>📱 WhatsApp 验证码发送</h3>
         <div class="list-filter">
-          <button class="filter-btn active" onclick="filterWA('pending')">待发送</button>
-          <button class="filter-btn" onclick="filterWA('sent')">已发送</button>
-          <button class="filter-btn" onclick="filterWA('all')">全部</button>
+          <button class="filter-btn active" onclick="filterWA('pending',this)">待发送</button>
+          <button class="filter-btn" onclick="filterWA('sent',this)">已发送</button>
+          <button class="filter-btn" onclick="filterWA('all',this)">全部</button>
         </div>
         <div class="data-list" id="waList"><div class="empty-state"><div class="icon">📱</div><p>加载中...</p></div></div>
       </div>
@@ -536,10 +536,10 @@
       }).getRecordList(recordFilter, 1, 50);
     }
     
-    function filterRecords(f) {
+    function filterRecords(f, btn) {
       recordFilter = f;
       document.querySelectorAll('#tab-records .filter-btn').forEach(function(b) { b.classList.remove('active'); });
-      event.target.classList.add('active');
+      if (btn) btn.classList.add('active');
       loadRecords();
     }
     
@@ -563,16 +563,18 @@
     }
     
     // WhatsApp
+    var waData = [];
     function loadWAList() {
       google.script.run.withSuccessHandler(function(r) {
-        renderWAList(r.records);
+        waData = r.records || [];
+        renderWAList(waData);
       }).getWAList(waFilter);
     }
     
-    function filterWA(f) {
+    function filterWA(f, btn) {
       waFilter = f;
       document.querySelectorAll('#tab-whatsapp .filter-btn').forEach(function(b) { b.classList.remove('active'); });
-      event.target.classList.add('active');
+      if (btn) btn.classList.add('active');
       loadWAList();
     }
     
@@ -582,8 +584,8 @@
         list.innerHTML = '<div class="empty-state"><div class="icon">📱</div><p>暂无记录</p></div>';
         return;
       }
-      list.innerHTML = records.map(function(r) {
-        var btn = '<button class="btn btn-sm btn-success" onclick="sendWA(\'' + r.code + '\',\'' + r.phone + '\',\'' + r.prize + '\',\'' + r.expiryDate + '\')">' + (r.waStatus === '待发送' ? '📤发送' : '🔄重发') + '</button>';
+      list.innerHTML = records.map(function(r, idx) {
+        var btn = '<button class="btn btn-sm btn-success" onclick="sendWAByIdx(' + idx + ')">' + (r.waStatus === '待发送' ? '📤发送' : '🔄重发') + '</button>';
         var sentInfo = r.waStatus === '已发送' ? '<div style="color:#999;font-size:10px;margin-top:3px;">' + r.waSentTime + '</div>' : '';
         return '<div class="list-item">' +
           '<div class="main-info">' +
@@ -599,17 +601,19 @@
         '</div>';
       }).join('');
     }
-    
-    function sendWA(code, phone, prize, expiry) {
-      google.script.run.withSuccessHandler(function(r) {
-        if (r.success) {
-          window.open(r.waLink, '_blank');
+
+    function sendWAByIdx(idx) {
+      var r = waData[idx];
+      if (!r) return;
+      google.script.run.withSuccessHandler(function(res) {
+        if (res.success) {
+          window.open(res.waLink, '_blank');
           loadWAList();
           loadStats();
         } else {
-          alert('❌ ' + r.message);
+          alert('❌ ' + res.message);
         }
-      }).sendWhatsAppByCode(code, currentStaff.name, currentStaff.role);
+      }).sendWhatsAppByCode(r.code, currentStaff.name, currentStaff.role);
     }
 
     function manualSendWA() {
@@ -646,15 +650,18 @@
     }
 
     // 到期提醒
+    var expiryData = [];
     function checkExpiryReminders() {
       var list = document.getElementById('expiryReminderList');
       list.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>检查中...</p></div>';
       google.script.run.withSuccessHandler(function(reminders) {
         if (!reminders || reminders.length === 0) {
+          expiryData = [];
           list.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>暂无7天内到期的未兑换奖品</p></div>';
           return;
         }
-        list.innerHTML = reminders.map(function(r) {
+        expiryData = reminders;
+        list.innerHTML = reminders.map(function(r, idx) {
           return '<div class="list-item">' +
             '<div class="main-info">' +
               '<div class="title"><span class="code">' + r.code + '</span> ' + r.prize + '</div>' +
@@ -662,13 +669,19 @@
               '<div class="meta">⚠️ 到期: ' + r.expiry + '</div>' +
             '</div>' +
             '<div style="text-align:right;">' +
-              '<button class="btn btn-sm" style="background:#ff9800;color:#fff;" onclick="window.open(\'' + r.waLink + '\',\'_blank\')">⏰ 发送提醒</button>' +
+              '<button class="btn btn-sm" style="background:#ff9800;color:#fff;" onclick="sendExpiryByIdx(' + idx + ')">⏰ 发送提醒</button>' +
             '</div>' +
           '</div>';
         }).join('');
       }).withFailureHandler(function() {
         list.innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>检查失败</p></div>';
       }).sendExpiryReminders();
+    }
+
+    function sendExpiryByIdx(idx) {
+      var r = expiryData[idx];
+      if (!r || !r.waLink) return;
+      window.open(r.waLink, '_blank');
     }
 
     function setupTrigger() {

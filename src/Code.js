@@ -661,7 +661,7 @@ function savePrizeConfig(prizes) {
     sh.getRange(p.row, 3).setValue(p.icon);
     sh.getRange(p.row, 4).setValue(p.totalStock);
     sh.getRange(p.row, 7).setValue(p.weight);
-    sh.getRange(p.row, 8).setValue(p.value);
+    if (p.value !== undefined) sh.getRange(p.row, 8).setValue(p.value);
     sh.getRange(p.row, 9).setValue(p.isGrand ? '是' : '否');
     sh.getRange(p.row, 10).setValue(p.status);
   }
