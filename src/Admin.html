@@ -187,23 +187,17 @@
       </div>
 
       <div class="card">
-        <h3>📈 最近7天趋势</h3>
-        <div style="margin-bottom:10px;">
-          <span style="font-size:13px;color:#8b0000;">■ 抽奖次数</span>
-          <span style="font-size:13px;color:#2196f3;margin-left:20px;">■ 新用户</span>
-        </div>
-        <div id="chartArea" style="display:flex;align-items:flex-end;gap:8px;height:180px;border-bottom:2px solid #eee;padding-bottom:5px;"></div>
-        <div id="chartLabels" style="display:flex;gap:8px;margin-top:5px;"></div>
+        <h3>📈 最近7天</h3>
+        <div id="chartArea"></div>
       </div>
 
       <div class="card">
-        <h3>🎁 奖品发放统计</h3>
+        <h3>🎁 奖品库存</h3>
         <div id="prizeChartArea"></div>
       </div>
 
       <div class="card">
-        <h3>📋 整体数据</h3>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="overallStats">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
           <div style="background:#f5f5f5;border-radius:10px;padding:14px;text-align:center;">
             <div style="font-size:13px;color:#666;">总用户</div>
             <div style="font-size:28px;font-weight:bold;color:#333;" id="dsTotalUsers">-</div>
@@ -1106,26 +1100,32 @@
 
     function renderBarChart(dates, draws, users) {
       var area = document.getElementById('chartArea');
-      var labels = document.getElementById('chartLabels');
-      var maxVal = Math.max.apply(null, draws.concat(users)) || 1;
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
+        '<tr style="background:#f5f0f0;"><th style="padding:10px;text-align:left;color:#8b0000;">日期</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">🎰 抽奖</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">📱 新用户</th></tr>';
 
-      area.innerHTML = '';
-      labels.innerHTML = '';
       for (var i = 0; i < dates.length; i++) {
-        var drawH = Math.max(draws[i] / maxVal * 150, draws[i] > 0 ? 8 : 2);
-        var userH = Math.max(users[i] / maxVal * 150, users[i] > 0 ? 8 : 2);
-
-        area.innerHTML +=
-          '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;">' +
-            '<div style="font-size:11px;color:#8b0000;font-weight:bold;">' + (draws[i] || '') + '</div>' +
-            '<div style="width:60%;background:linear-gradient(180deg,#cc0000,#8b0000);border-radius:4px 4px 0 0;height:' + drawH + 'px;min-width:18px;" title="抽奖: ' + draws[i] + '"></div>' +
-            '<div style="font-size:10px;color:#1565c0;font-weight:bold;">' + (users[i] || '') + '</div>' +
-            '<div style="width:40%;background:linear-gradient(180deg,#42a5f5,#1565c0);border-radius:4px 4px 0 0;height:' + userH + 'px;min-width:12px;" title="新用户: ' + users[i] + '"></div>' +
-          '</div>';
-
-        labels.innerHTML +=
-          '<div style="flex:1;text-align:center;font-size:12px;color:#666;">' + dates[i] + '</div>';
+        var isToday = (i === dates.length - 1);
+        var bg = isToday ? '#fff9e6' : (i % 2 === 0 ? '#fff' : '#fafafa');
+        var drawColor = draws[i] > 10 ? '#c62828' : (draws[i] > 0 ? '#8b0000' : '#ccc');
+        var userColor = users[i] > 10 ? '#1565c0' : (users[i] > 0 ? '#2196f3' : '#ccc');
+        html += '<tr style="background:' + bg + ';' + (isToday ? 'font-weight:bold;' : '') + '">' +
+          '<td style="padding:10px;border-bottom:1px solid #f0f0f0;">' + dates[i] + (isToday ? ' <span style="font-size:11px;color:#ff9800;">今天</span>' : '') + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;color:' + drawColor + ';font-size:18px;font-weight:bold;">' + draws[i] + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;color:' + userColor + ';font-size:18px;font-weight:bold;">' + users[i] + '</td>' +
+        '</tr>';
       }
+
+      // 合计行
+      var totalD = draws.reduce(function(a, b) { return a + b; }, 0);
+      var totalU = users.reduce(function(a, b) { return a + b; }, 0);
+      html += '<tr style="background:#f5f0f0;font-weight:bold;">' +
+        '<td style="padding:10px;">合计</td>' +
+        '<td style="padding:10px;text-align:center;color:#8b0000;font-size:18px;">' + totalD + '</td>' +
+        '<td style="padding:10px;text-align:center;color:#2196f3;font-size:18px;">' + totalU + '</td>' +
+      '</tr></table>';
+      area.innerHTML = html;
     }
 
     function renderPrizeChart(prizeStats) {
@@ -1134,23 +1134,35 @@
         area.innerHTML = '<p style="color:#999;text-align:center;">暂无奖品数据</p>';
         return;
       }
-      var maxTotal = Math.max.apply(null, prizeStats.map(function(p) { return p.total; })) || 1;
 
-      area.innerHTML = prizeStats.map(function(p) {
-        var usedPct = p.total > 0 ? (p.used / p.total * 100) : 0;
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
+        '<tr style="background:#f5f0f0;"><th style="padding:10px;text-align:left;color:#8b0000;">奖品</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">已发</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">总库存</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">剩余</th>' +
+        '<th style="padding:10px;text-align:right;color:#8b0000;min-width:80px;">进度</th></tr>';
+
+      prizeStats.forEach(function(p, i) {
+        var pct = p.total > 0 ? Math.round(p.used / p.total * 100) : 0;
         var barColor = p.remaining <= 0 ? '#999' : (p.remaining <= 5 ? '#f44336' : '#4caf50');
-        var statusTag = p.status === '停用' ? '<span style="color:#999;font-size:11px;"> (停用)</span>' : '';
-        return '<div style="margin-bottom:14px;">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">' +
-            '<span style="font-size:15px;font-weight:bold;">' + p.icon + ' ' + p.name + statusTag + '</span>' +
-            '<span style="font-size:13px;color:#666;">' + p.used + ' / ' + p.total + '  <span style="color:' + barColor + ';font-weight:bold;">剩' + p.remaining + '</span></span>' +
-          '</div>' +
-          '<div style="background:#f0f0f0;border-radius:8px;height:22px;overflow:hidden;position:relative;">' +
-            '<div style="background:linear-gradient(90deg,' + barColor + ',' + (barColor === '#4caf50' ? '#81c784' : (barColor === '#f44336' ? '#ef9a9a' : '#bbb')) + ');height:100%;border-radius:8px;width:' + usedPct + '%;transition:width 0.5s;"></div>' +
-            '<div style="position:absolute;top:0;left:0;right:0;height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#333;">' + Math.round(usedPct) + '% 已发</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
+        var remColor = p.remaining <= 0 ? '#999' : (p.remaining <= 5 ? '#f44336' : '#2e7d32');
+        var bg = i % 2 === 0 ? '#fff' : '#fafafa';
+        var off = p.status === '停用';
+        html += '<tr style="background:' + bg + ';' + (off ? 'opacity:0.5;' : '') + '">' +
+          '<td style="padding:10px;border-bottom:1px solid #f0f0f0;white-space:nowrap;">' + p.icon + ' ' + p.name + (off ? ' <span style="color:#999;font-size:11px;">(停)</span>' : '') + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;font-weight:bold;">' + p.used + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;color:#666;">' + p.total + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;font-weight:bold;color:' + remColor + ';">' + p.remaining + '</td>' +
+          '<td style="padding:10px;border-bottom:1px solid #f0f0f0;">' +
+            '<div style="background:#eee;border-radius:6px;height:16px;overflow:hidden;position:relative;min-width:70px;">' +
+              '<div style="background:' + barColor + ';height:100%;width:' + pct + '%;border-radius:6px;"></div>' +
+              '<div style="position:absolute;top:0;left:0;right:0;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:#333;">' + pct + '%</div>' +
+            '</div>' +
+          '</td></tr>';
+      });
+
+      html += '</table>';
+      area.innerHTML = html;
     }
 
     // ==================== QR扫码 ====================
