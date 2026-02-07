@@ -437,7 +437,7 @@ function adminLogin(username, password) {
   var d = getSheet(SH.STAFF).getDataRange().getValues();
   
   for (var i = 1; i < d.length; i++) {
-    if (d[i][2] === username && d[i][3] === password && d[i][5] === '启用') {
+    if (String(d[i][2]) === username && String(d[i][3]) === password && d[i][5] === '启用') {
       getSheet(SH.STAFF).getRange(i + 1, 8).setValue(new Date());
       addLog(d[i][1], d[i][4], '登录', '管理员登录');
       return {
