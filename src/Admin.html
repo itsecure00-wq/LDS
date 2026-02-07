@@ -104,7 +104,20 @@
       .form-row { grid-template-columns: 1fr; }
       .verify-input { flex-direction: column; }
     }
+    .qr-scanner-container { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92); z-index: 3000; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    .qr-scanner-container.show { display: flex; }
+    .scanner-header { text-align: center; color: #fff; margin-bottom: 15px; }
+    .scanner-header h3 { font-size: 20px; margin-bottom: 5px; }
+    .scanner-header p { font-size: 14px; color: #ccc; }
+    #qr-reader { width: 100%; max-width: 500px; border-radius: 12px; overflow: hidden; }
+    #qr-reader video { border-radius: 12px; }
+    .scanner-close-btn { margin-top: 20px; padding: 14px 40px; background: #cc0000; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .scan-btn { padding: 16px 24px; background: #25a244; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    @media (max-width: 500px) {
+      .scan-btn { width: 100%; margin-top: 8px; }
+    }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.4/html5-qrcode.min.js"></script>
 </head>
 <body>
   <div class="login-page" id="loginPage">
@@ -153,6 +166,7 @@
         <div class="verify-input">
           <input type="text" id="verifyCode" placeholder="ZCH123456" maxlength="12" onkeypress="if(event.keyCode==13)queryCode()">
           <button onclick="queryCode()">🔍 查询</button>
+          <button class="scan-btn" onclick="startQRScanner('verify')">📷 扫码</button>
         </div>
         <div class="verify-result" id="verifyResult">
           <div class="status" id="verifyStatus"></div>
@@ -191,9 +205,10 @@
         <h3>✉️ 手动发送</h3>
         <div class="form-group">
           <label>验证码</label>
-          <div style="display:flex;gap:10px;">
-            <input type="text" id="waManualCode" placeholder="ZCH123456" style="flex:1;font-family:monospace;text-transform:uppercase;">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <input type="text" id="waManualCode" placeholder="ZCH123456" style="flex:1;font-family:monospace;text-transform:uppercase;min-width:120px;">
             <button class="btn btn-success" onclick="manualSendWA()">📤 发送</button>
+            <button class="scan-btn" onclick="startQRScanner('whatsapp')">📷 扫码</button>
           </div>
         </div>
       </div>
@@ -310,6 +325,15 @@
         </div>
         <button class="btn btn-success btn-block" onclick="addNewStaff()">添加员工</button>
       </div>
+    </div>
+
+    <div class="qr-scanner-container" id="qrScannerContainer">
+      <div class="scanner-header">
+        <h3>📷 扫描验证码</h3>
+        <p>将二维码对准摄像头</p>
+      </div>
+      <div id="qr-reader"></div>
+      <button class="scanner-close-btn" onclick="stopQRScanner()">关闭扫描</button>
     </div>
   </div>
 
@@ -713,6 +737,51 @@
         testAudio = null;
       }
       document.getElementById('musicTestResult').innerHTML = '';
+    }
+
+    // ==================== QR扫码 ====================
+    var qrScanner = null;
+    var scannerMode = '';
+
+    function startQRScanner(mode) {
+      scannerMode = mode;
+      document.getElementById('qrScannerContainer').classList.add('show');
+
+      qrScanner = new Html5Qrcode('qr-reader');
+      qrScanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        function() {}
+      ).catch(function(err) {
+        alert('无法启动摄像头: ' + err);
+        stopQRScanner();
+      });
+    }
+
+    function onScanSuccess(decodedText) {
+      var code = decodedText.trim().toUpperCase();
+      stopQRScanner();
+
+      if (scannerMode === 'verify') {
+        document.getElementById('verifyCode').value = code;
+        queryCode();
+      } else if (scannerMode === 'whatsapp') {
+        document.getElementById('waManualCode').value = code;
+        alert('已扫描验证码: ' + code);
+      }
+    }
+
+    function stopQRScanner() {
+      document.getElementById('qrScannerContainer').classList.remove('show');
+      if (qrScanner) {
+        qrScanner.stop().then(function() {
+          qrScanner.clear();
+          qrScanner = null;
+        }).catch(function() {
+          qrScanner = null;
+        });
+      }
     }
   </script>
 </body>
