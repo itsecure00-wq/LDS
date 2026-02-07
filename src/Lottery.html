@@ -332,27 +332,42 @@
     }
 
     function playMusic() {
-      if (bgMusicUrl) {
-        try {
-          bgAudio = new Audio(bgMusicUrl);
+      if (!bgMusicUrl) { playFallbackMusic(); return; }
+      // For Google Drive URLs, go straight to server proxy (direct play always fails in iframe)
+      if (bgMusicUrl.indexOf('drive.google.com') >= 0) {
+        playViaProxy();
+        return;
+      }
+      // For other URLs, try direct play first
+      try {
+        bgAudio = new Audio(bgMusicUrl);
+        bgAudio.loop = true;
+        bgAudio.volume = 0.3;
+        var directFailed = false;
+        bgAudio.onerror = function() {
+          if (!directFailed) { directFailed = true; playFallbackMusic(); }
+        };
+        bgAudio.play().then(function() {}).catch(function() {
+          if (!directFailed) { directFailed = true; playFallbackMusic(); }
+        });
+        // Timeout: if not playing after 5s, fallback
+        setTimeout(function() {
+          if (!directFailed && bgAudio && bgAudio.paused && musicPlaying) {
+            directFailed = true; playFallbackMusic();
+          }
+        }, 5000);
+      } catch(e) { playFallbackMusic(); }
+    }
+
+    function playViaProxy() {
+      google.script.run.withSuccessHandler(function(dataUrl) {
+        if (dataUrl && musicPlaying) {
+          bgAudio = new Audio(dataUrl);
           bgAudio.loop = true;
           bgAudio.volume = 0.3;
-          bgAudio.onerror = function() {
-            // Direct URL failed (CORS), try server proxy
-            google.script.run.withSuccessHandler(function(dataUrl) {
-              if (dataUrl && musicPlaying) {
-                bgAudio = new Audio(dataUrl);
-                bgAudio.loop = true;
-                bgAudio.volume = 0.3;
-                bgAudio.play().catch(function() {});
-              } else { playFallbackMusic(); }
-            }).withFailureHandler(function() { playFallbackMusic(); }).proxyAudioUrl(bgMusicUrl);
-          };
-          bgAudio.play().catch(function() {});
-        } catch(e) { playFallbackMusic(); }
-      } else {
-        playFallbackMusic();
-      }
+          bgAudio.play().catch(function() { playFallbackMusic(); });
+        } else { playFallbackMusic(); }
+      }).withFailureHandler(function() { playFallbackMusic(); }).proxyAudioUrl(bgMusicUrl);
     }
 
     function playFallbackMusic() {

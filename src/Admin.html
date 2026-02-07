@@ -153,16 +153,75 @@
     </div>
     
     <div class="tabs" id="tabsNav">
-      <button class="tab-btn active" data-tab="verify">🎫 验票</button>
+      <button class="tab-btn active" data-tab="dashboard" data-role="Boss,Admin">📊 统计</button>
+      <button class="tab-btn" data-tab="verify">🎫 验票</button>
       <button class="tab-btn" data-tab="records">📋 记录</button>
       <button class="tab-btn" data-tab="whatsapp" data-role="Manager,Boss,Admin">📱 WhatsApp</button>
       <button class="tab-btn" data-tab="prizes" data-role="Boss,Admin">🎁 奖品</button>
       <button class="tab-btn" data-tab="music" data-role="Boss,Admin">🎵 音乐</button>
       <button class="tab-btn" data-tab="staff" data-role="Boss,Admin">👤 员工</button>
     </div>
-    
+
+    <!-- 统计面板 -->
+    <div class="tab-content active" id="tab-dashboard">
+      <div class="card">
+        <h3>📊 今日概览</h3>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;" id="todayStats">
+          <div style="background:#fff9e6;border:2px solid #ffd700;border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:14px;color:#666;">📱 今日新用户</div>
+            <div style="font-size:36px;font-weight:bold;color:#8b0000;" id="dsTodayUsers">-</div>
+          </div>
+          <div style="background:#e8f5e9;border:2px solid #4caf50;border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:14px;color:#666;">🎰 今日抽奖</div>
+            <div style="font-size:36px;font-weight:bold;color:#2e7d32;" id="dsTodayDraws">-</div>
+          </div>
+          <div style="background:#e3f2fd;border:2px solid #2196f3;border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:14px;color:#666;">✅ 今日核销</div>
+            <div style="font-size:36px;font-weight:bold;color:#1565c0;" id="dsTodayVerified">-</div>
+          </div>
+          <div style="background:#fff3e0;border:2px solid #ff9800;border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:14px;color:#666;">⏳ 待核销总数</div>
+            <div style="font-size:36px;font-weight:bold;color:#e65100;" id="dsTotalPending">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📈 最近7天趋势</h3>
+        <div style="margin-bottom:10px;">
+          <span style="font-size:13px;color:#8b0000;">■ 抽奖次数</span>
+          <span style="font-size:13px;color:#2196f3;margin-left:20px;">■ 新用户</span>
+        </div>
+        <div id="chartArea" style="display:flex;align-items:flex-end;gap:8px;height:180px;border-bottom:2px solid #eee;padding-bottom:5px;"></div>
+        <div id="chartLabels" style="display:flex;gap:8px;margin-top:5px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>🎁 奖品发放统计</h3>
+        <div id="prizeChartArea"></div>
+      </div>
+
+      <div class="card">
+        <h3>📋 整体数据</h3>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="overallStats">
+          <div style="background:#f5f5f5;border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:13px;color:#666;">总用户</div>
+            <div style="font-size:28px;font-weight:bold;color:#333;" id="dsTotalUsers">-</div>
+          </div>
+          <div style="background:#f5f5f5;border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:13px;color:#666;">总抽奖</div>
+            <div style="font-size:28px;font-weight:bold;color:#333;" id="dsTotalDraws">-</div>
+          </div>
+          <div style="background:#f5f5f5;border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:13px;color:#666;">核销率</div>
+            <div style="font-size:28px;font-weight:bold;color:#333;" id="dsVerifyRate">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 验票核销 -->
-    <div class="tab-content active" id="tab-verify">
+    <div class="tab-content" id="tab-verify">
       <div class="verify-section">
         <h3 style="color:#8b0000;margin-bottom:12px;">🎫 输入验证码核销</h3>
         <div class="verify-input">
@@ -401,6 +460,7 @@
         document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
         this.classList.add('active');
         document.getElementById('tab-' + tab).classList.add('active');
+        if (tab === 'dashboard') loadDashboard();
         if (tab === 'records') loadRecords();
         if (tab === 'whatsapp') { loadWAList(); loadWATemplates(); }
         if (tab === 'prizes') loadPrizes();
@@ -453,7 +513,18 @@
           btn.classList.add('hidden');
         }
       });
-      
+
+      // 如果统计tab被隐藏（非Boss/Admin），切到验票tab
+      var dashTab = document.querySelector('.tab-btn[data-tab="dashboard"]');
+      if (dashTab && dashTab.classList.contains('hidden')) {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        document.querySelector('.tab-btn[data-tab="verify"]').classList.add('active');
+        document.getElementById('tab-verify').classList.add('active');
+      } else {
+        loadDashboard();
+      }
+
       loadStats();
     }
     
@@ -946,6 +1017,77 @@
         testAudio = null;
       }
       document.getElementById('musicTestResult').innerHTML = '';
+    }
+
+    // ==================== 统计面板 ====================
+    function loadDashboard() {
+      google.script.run.withSuccessHandler(function(s) {
+        // 今日概览
+        document.getElementById('dsTodayUsers').textContent = s.todayNewUsers;
+        document.getElementById('dsTodayDraws').textContent = s.todayDraws;
+        document.getElementById('dsTodayVerified').textContent = s.todayVerified;
+        document.getElementById('dsTotalPending').textContent = s.totalPending;
+
+        // 整体数据
+        document.getElementById('dsTotalUsers').textContent = s.totalUsers;
+        document.getElementById('dsTotalDraws').textContent = s.totalDraws;
+        document.getElementById('dsVerifyRate').textContent = s.verifyRate + '%';
+
+        // 7天趋势柱状图
+        renderBarChart(s.dates, s.drawCounts, s.userCounts);
+
+        // 奖品统计
+        renderPrizeChart(s.prizeStats);
+      }).withFailureHandler(function() {}).getDetailedStats();
+    }
+
+    function renderBarChart(dates, draws, users) {
+      var area = document.getElementById('chartArea');
+      var labels = document.getElementById('chartLabels');
+      var maxVal = Math.max.apply(null, draws.concat(users)) || 1;
+
+      area.innerHTML = '';
+      labels.innerHTML = '';
+      for (var i = 0; i < dates.length; i++) {
+        var drawH = Math.max(draws[i] / maxVal * 150, draws[i] > 0 ? 8 : 2);
+        var userH = Math.max(users[i] / maxVal * 150, users[i] > 0 ? 8 : 2);
+
+        area.innerHTML +=
+          '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;">' +
+            '<div style="font-size:11px;color:#8b0000;font-weight:bold;">' + (draws[i] || '') + '</div>' +
+            '<div style="width:60%;background:linear-gradient(180deg,#cc0000,#8b0000);border-radius:4px 4px 0 0;height:' + drawH + 'px;min-width:18px;" title="抽奖: ' + draws[i] + '"></div>' +
+            '<div style="font-size:10px;color:#1565c0;font-weight:bold;">' + (users[i] || '') + '</div>' +
+            '<div style="width:40%;background:linear-gradient(180deg,#42a5f5,#1565c0);border-radius:4px 4px 0 0;height:' + userH + 'px;min-width:12px;" title="新用户: ' + users[i] + '"></div>' +
+          '</div>';
+
+        labels.innerHTML +=
+          '<div style="flex:1;text-align:center;font-size:12px;color:#666;">' + dates[i] + '</div>';
+      }
+    }
+
+    function renderPrizeChart(prizeStats) {
+      var area = document.getElementById('prizeChartArea');
+      if (!prizeStats || prizeStats.length === 0) {
+        area.innerHTML = '<p style="color:#999;text-align:center;">暂无奖品数据</p>';
+        return;
+      }
+      var maxTotal = Math.max.apply(null, prizeStats.map(function(p) { return p.total; })) || 1;
+
+      area.innerHTML = prizeStats.map(function(p) {
+        var usedPct = p.total > 0 ? (p.used / p.total * 100) : 0;
+        var barColor = p.remaining <= 0 ? '#999' : (p.remaining <= 5 ? '#f44336' : '#4caf50');
+        var statusTag = p.status === '停用' ? '<span style="color:#999;font-size:11px;"> (停用)</span>' : '';
+        return '<div style="margin-bottom:14px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">' +
+            '<span style="font-size:15px;font-weight:bold;">' + p.icon + ' ' + p.name + statusTag + '</span>' +
+            '<span style="font-size:13px;color:#666;">' + p.used + ' / ' + p.total + '  <span style="color:' + barColor + ';font-weight:bold;">剩' + p.remaining + '</span></span>' +
+          '</div>' +
+          '<div style="background:#f0f0f0;border-radius:8px;height:22px;overflow:hidden;position:relative;">' +
+            '<div style="background:linear-gradient(90deg,' + barColor + ',' + (barColor === '#4caf50' ? '#81c784' : (barColor === '#f44336' ? '#ef9a9a' : '#bbb')) + ');height:100%;border-radius:8px;width:' + usedPct + '%;transition:width 0.5s;"></div>' +
+            '<div style="position:absolute;top:0;left:0;right:0;height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#333;">' + Math.round(usedPct) + '% 已发</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
     }
 
     // ==================== QR扫码 ====================

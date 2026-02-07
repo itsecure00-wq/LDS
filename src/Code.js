@@ -4,7 +4,7 @@
  * 功能：15格抽奖、积分30天过期、防重复邀请、权限分级
  */
 
-var APP_VERSION = 'v43';
+var APP_VERSION = 'v44';
 
 // ============ Web App 入口 ============
 function doGet(e) {
@@ -633,6 +633,86 @@ function getStatistics() {
   };
 }
 
+// ============ 详细统计 ============
+function getDetailedStats() {
+  var rec = getSheet(SH.RECORDS).getDataRange().getValues();
+  var usr = getSheet(SH.USERS).getDataRange().getValues();
+  var pz = getSheet(SH.PRIZES).getDataRange().getValues();
+  var tz = 'Asia/Kuala_Lumpur';
+  var now = new Date();
+  var todayStr = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+
+  // ---- 用户统计 ----
+  var todayNewUsers = 0;
+  for (var u = 1; u < usr.length; u++) {
+    if (usr[u][4] && Utilities.formatDate(new Date(usr[u][4]), tz, 'yyyy-MM-dd') === todayStr) todayNewUsers++;
+  }
+
+  // ---- 抽奖统计 (最近7天) ----
+  var dailyDraws = {};
+  var dailyNewUsers = {};
+  for (var d = 6; d >= 0; d--) {
+    var dt = new Date(now); dt.setDate(dt.getDate() - d);
+    var key = Utilities.formatDate(dt, tz, 'MM-dd');
+    dailyDraws[key] = 0;
+    dailyNewUsers[key] = 0;
+  }
+  for (var r = 1; r < rec.length; r++) {
+    if (rec[r][1]) {
+      var k = Utilities.formatDate(new Date(rec[r][1]), tz, 'MM-dd');
+      if (dailyDraws.hasOwnProperty(k)) dailyDraws[k]++;
+    }
+  }
+  for (var u2 = 1; u2 < usr.length; u2++) {
+    if (usr[u2][4]) {
+      var k2 = Utilities.formatDate(new Date(usr[u2][4]), tz, 'MM-dd');
+      if (dailyNewUsers.hasOwnProperty(k2)) dailyNewUsers[k2]++;
+    }
+  }
+
+  // ---- 奖品统计 ----
+  var prizeStats = [];
+  for (var p = 1; p < pz.length; p++) {
+    if (pz[p][0]) {
+      prizeStats.push({
+        name: pz[p][1],
+        icon: pz[p][2] || '🎁',
+        total: pz[p][3] || 0,
+        used: pz[p][4] || 0,
+        remaining: (pz[p][3] || 0) - (pz[p][4] || 0),
+        status: pz[p][9] || '启用'
+      });
+    }
+  }
+
+  // ---- 今日抽奖次数 & 核销 ----
+  var todayDraws2 = 0, todayVerified = 0, totalVerified = 0, totalPending = 0;
+  for (var r2 = 1; r2 < rec.length; r2++) {
+    if (rec[r2][1] && Utilities.formatDate(new Date(rec[r2][1]), tz, 'yyyy-MM-dd') === todayStr) todayDraws2++;
+    if (rec[r2][10] === '已核销') { totalVerified++; if (rec[r2][11] && Utilities.formatDate(new Date(rec[r2][11]), tz, 'yyyy-MM-dd') === todayStr) todayVerified++; }
+    if (rec[r2][10] === '未核销') totalPending++;
+  }
+
+  var drawDates = Object.keys(dailyDraws);
+  var drawCounts = drawDates.map(function(k) { return dailyDraws[k]; });
+  var userCounts = drawDates.map(function(k) { return dailyNewUsers[k]; });
+
+  return {
+    totalUsers: usr.length - 1,
+    todayNewUsers: todayNewUsers,
+    totalDraws: rec.length - 1,
+    todayDraws: todayDraws2,
+    todayVerified: todayVerified,
+    totalVerified: totalVerified,
+    totalPending: totalPending,
+    verifyRate: rec.length > 1 ? Math.round(totalVerified / (rec.length - 1) * 100) : 0,
+    dates: drawDates,
+    drawCounts: drawCounts,
+    userCounts: userCounts,
+    prizeStats: prizeStats
+  };
+}
+
 // 获取抽奖页奖品列表（前端显示用）
 function getLotteryPrizes() {
   var d = getSheet(SH.PRIZES).getDataRange().getValues();
@@ -945,11 +1025,36 @@ function initializeSystem() {
 // ============ 音乐代理 ============
 function proxyAudioUrl(url) {
   try {
+    // Convert Google Drive view/share URLs to direct download
+    var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) url = 'https://drive.google.com/uc?export=download&id=' + match[1];
+    if (url.indexOf('drive.google.com') >= 0 && url.indexOf('id=') >= 0 && url.indexOf('export=download') < 0) {
+      var idMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
+      if (idMatch) url = 'https://drive.google.com/uc?export=download&id=' + idMatch[1];
+    }
+
     var response = UrlFetchApp.fetch(url, { followRedirects: true, muteHttpExceptions: true });
     if (response.getResponseCode() !== 200) return null;
     var blob = response.getBlob();
+    var bytes = blob.getBytes();
+
+    // Check file size - skip if > 5MB (too large for data URL transfer)
+    if (bytes.length > 5 * 1024 * 1024) return null;
+
     var contentType = blob.getContentType() || 'audio/mpeg';
-    var b64 = Utilities.base64Encode(blob.getBytes());
+    // If Google Drive returned HTML (virus scan page), try with confirm param
+    if (contentType.indexOf('text/html') >= 0 && url.indexOf('drive.google.com') >= 0) {
+      var confirmUrl = url + '&confirm=t';
+      response = UrlFetchApp.fetch(confirmUrl, { followRedirects: true, muteHttpExceptions: true });
+      if (response.getResponseCode() !== 200) return null;
+      blob = response.getBlob();
+      bytes = blob.getBytes();
+      contentType = blob.getContentType() || 'audio/mpeg';
+      if (contentType.indexOf('text/html') >= 0) return null;
+      if (bytes.length > 5 * 1024 * 1024) return null;
+    }
+
+    var b64 = Utilities.base64Encode(bytes);
     return 'data:' + contentType + ';base64,' + b64;
   } catch(e) {
     return null;
