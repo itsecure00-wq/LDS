@@ -218,6 +218,16 @@
           </div>
         </div>
       </div>
+
+      <div class="card">
+        <h3>🧪 压力测试</h3>
+        <p style="font-size:13px;color:#666;margin-bottom:12px;">模拟100人同时抽奖，测试系统稳定性和库存一致性。</p>
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <button class="btn btn-primary" onclick="runLoadTest()" id="loadTestBtn">🚀 开始测试 (100人)</button>
+          <button class="btn" style="background:#ff9800;color:#fff;" onclick="cleanTest()" id="cleanTestBtn">🧹 清理测试数据</button>
+        </div>
+        <div id="loadTestResult" style="display:none;background:#f9f9f9;border:1px solid #ddd;border-radius:10px;padding:16px;font-size:14px;line-height:2;"></div>
+      </div>
     </div>
 
     <!-- 验票核销 -->
@@ -1017,6 +1027,59 @@
         testAudio = null;
       }
       document.getElementById('musicTestResult').innerHTML = '';
+    }
+
+    // ==================== 压力测试 ====================
+    function runLoadTest() {
+      var btn = document.getElementById('loadTestBtn');
+      var result = document.getElementById('loadTestResult');
+      btn.disabled = true; btn.textContent = '⏳ 测试中... (约2-5分钟)';
+      result.style.display = 'block';
+      result.innerHTML = '<span style="color:#666;">⏳ 正在注册100个测试用户并执行抽奖，请耐心等待...</span>';
+
+      google.script.run.withSuccessHandler(function(r) {
+        btn.disabled = false; btn.textContent = '🚀 开始测试 (100人)';
+        var prizeList = Object.keys(r.prizeDistribution).map(function(k) {
+          return k + ': ' + r.prizeDistribution[k] + '次';
+        }).join('<br>');
+        var errorList = r.errors.length > 0 ? r.errors.join('<br>') : '无';
+
+        result.innerHTML =
+          '<h4 style="color:#8b0000;margin-bottom:10px;">📊 测试结果</h4>' +
+          '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">' +
+            '<div style="background:#e8f5e9;padding:10px;border-radius:8px;text-align:center;">' +
+              '<div style="font-size:12px;color:#666;">✅ 成功</div><div style="font-size:24px;font-weight:bold;color:#2e7d32;">' + r.successCount + '</div>' +
+            '</div>' +
+            '<div style="background:#ffebee;padding:10px;border-radius:8px;text-align:center;">' +
+              '<div style="font-size:12px;color:#666;">❌ 失败</div><div style="font-size:24px;font-weight:bold;color:#c62828;">' + r.failCount + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<b>⏱ 总耗时:</b> ' + r.totalTime + '<br>' +
+          '<b>⚡ 平均:</b> ' + r.avgTime + ' | <b>最快:</b> ' + r.minTime + ' | <b>最慢:</b> ' + r.maxTime + '<br>' +
+          '<b>📦 库存验证:</b> ' + r.matchSuccess + '<br>' +
+          '<b>⚠️ 超发检查:</b> ' + r.stockIssues.join(', ') + '<br>' +
+          '<hr style="margin:10px 0;">' +
+          '<b>🎁 奖品分布:</b><br>' + prizeList + '<br>' +
+          (r.errors.length > 0 ? '<hr style="margin:10px 0;"><b>❌ 错误:</b><br><span style="color:#c62828;font-size:12px;">' + errorList + '</span>' : '');
+
+        loadDashboard(); // 刷新统计
+      }).withFailureHandler(function(e) {
+        btn.disabled = false; btn.textContent = '🚀 开始测试 (100人)';
+        result.innerHTML = '<span style="color:#c62828;">❌ 测试失败: ' + e + '</span>';
+      }).loadTest100();
+    }
+
+    function cleanTest() {
+      var btn = document.getElementById('cleanTestBtn');
+      btn.disabled = true; btn.textContent = '🧹 清理中...';
+      google.script.run.withSuccessHandler(function(msg) {
+        btn.disabled = false; btn.textContent = '🧹 清理测试数据';
+        alert(msg);
+        loadDashboard();
+      }).withFailureHandler(function(e) {
+        btn.disabled = false; btn.textContent = '🧹 清理测试数据';
+        alert('清理失败: ' + e);
+      }).cleanTestData();
     }
 
     // ==================== 统计面板 ====================
