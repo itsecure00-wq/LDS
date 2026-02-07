@@ -581,10 +581,10 @@ function sendWhatsAppByCode(code, staffName, staffRole) {
       var prize = d[i][5];
       var expiry = d[i][7] ? Utilities.formatDate(new Date(d[i][7]), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd') : '';
       
-      addLog(staffName || 'System', staffRole || '', 'WhatsApp发送', '发送: ' + code + ' -> ' + phone);
-      
-      var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(code);
-      var msg = '【张崇会火锅】恭喜您中奖！🎉\n\n🎁 奖品：' + prize + '\n🔑 验证码：' + code + '\n📅 有效期至：' + expiry + '\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n' + qrUrl + '\n\n请到店出示此二维码给店员扫描兑换！';
+      var waAlreadySent = d[i][8] === '已发送';
+      addLog(staffName || 'System', staffRole || '', waAlreadySent ? 'WhatsApp重发' : 'WhatsApp发送', (waAlreadySent ? '重发' : '发送') + ': ' + code + ' -> ' + phone);
+
+      var msg = buildWAMessage(waAlreadySent ? 'resend' : 'send', prize, code, expiry);
       var waLink = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
       
       return { success: true, message: '已标记发送', phone: phone, waLink: waLink };
@@ -700,6 +700,70 @@ function updateStaffStatus(row, status) {
   return { success: true };
 }
 
+function updateStaff(row, name, username, password, role) {
+  var sh = getSheet(SH.STAFF);
+  sh.getRange(row, 2).setValue(name);
+  sh.getRange(row, 3).setValue(username);
+  if (password) sh.getRange(row, 4).setValue(password);
+  sh.getRange(row, 5).setValue(role);
+  return { success: true, message: '员工信息已更新' };
+}
+
+function deleteStaff(row) {
+  var sh = getSheet(SH.STAFF);
+  sh.deleteRow(row);
+  return { success: true, message: '员工已删除' };
+}
+
+// ============ WhatsApp 模板 ============
+function getWATemplates() {
+  var sh = getSheet('系统设置');
+  var d = sh.getDataRange().getValues();
+  var templates = {
+    send: '【张崇会火锅】恭喜您中奖！🎉\n\n🎁 奖品：{prize}\n🔑 验证码：{code}\n📅 有效期至：{expiry}\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n{qrUrl}\n\n请到店出示此二维码给店员扫描兑换！',
+    resend: '【张崇会火锅】验证码重发 📩\n\n🎁 奖品：{prize}\n🔑 验证码：{code}\n📅 有效期至：{expiry}\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n{qrUrl}\n\n请到店出示此二维码给店员扫描兑换！',
+    reminder: '【张崇会火锅】温馨提醒 ⏰\n\n您有一份奖品即将过期！\n\n🎁 奖品：{prize}\n🔑 验证码：{code}\n📅 有效期至：{expiry}（剩余7天）\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n{qrUrl}\n\n请尽快到店兑换，过期作废！'
+  };
+
+  for (var i = 1; i < d.length; i++) {
+    if (d[i][0] === 'waTplSend') templates.send = d[i][1];
+    if (d[i][0] === 'waTplResend') templates.resend = d[i][1];
+    if (d[i][0] === 'waTplReminder') templates.reminder = d[i][1];
+  }
+  return templates;
+}
+
+function saveWATemplates(send, resend, reminder) {
+  var sh = getSheet('系统设置');
+  var d = sh.getDataRange().getValues();
+  var rows = { waTplSend: 0, waTplResend: 0, waTplReminder: 0 };
+
+  for (var i = 1; i < d.length; i++) {
+    if (rows.hasOwnProperty(d[i][0])) rows[d[i][0]] = i + 1;
+  }
+
+  var vals = { waTplSend: send, waTplResend: resend, waTplReminder: reminder };
+  var labels = { waTplSend: 'WA发送模板', waTplResend: 'WA重发模板', waTplReminder: 'WA到期提醒模板' };
+
+  for (var key in vals) {
+    if (rows[key] > 0) {
+      sh.getRange(rows[key], 2).setValue(vals[key]);
+    } else {
+      sh.appendRow([key, vals[key], labels[key]]);
+    }
+  }
+
+  addLog('Admin', '', '更新WA模板', '已更新WhatsApp消息模板');
+  return { success: true, message: '模板保存成功' };
+}
+
+function buildWAMessage(type, prize, code, expiry) {
+  var templates = getWATemplates();
+  var tpl = templates[type] || templates.send;
+  var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(code);
+  return tpl.replace(/\{prize\}/g, prize).replace(/\{code\}/g, code).replace(/\{expiry\}/g, expiry).replace(/\{qrUrl\}/g, qrUrl);
+}
+
 // ============ 到期提醒 ============
 function sendExpiryReminders() {
   var sh = getSheet(SH.RECORDS);
@@ -719,9 +783,8 @@ function sendExpiryReminders() {
       var prize = d[i][5];
       var code = d[i][6];
       var expiryStr = Utilities.formatDate(expiry, 'Asia/Kuala_Lumpur', 'yyyy-MM-dd');
-      var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(code);
 
-      var msg = '【张崇会火锅】温馨提醒 ⏰\n\n您有一份奖品即将过期！\n\n🎁 奖品：' + prize + '\n🔑 验证码：' + code + '\n📅 有效期至：' + expiryStr + '（剩余7天）\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n' + qrUrl + '\n\n请尽快到店兑换，过期作废！';
+      var msg = buildWAMessage('reminder', prize, code, expiryStr);
 
       reminders.push({
         phone: phone,

@@ -213,6 +213,25 @@
         </div>
       </div>
       <div class="card">
+        <h3>📝 消息模板设置</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:12px;">
+          可用变量：<code>{prize}</code> 奖品名 | <code>{code}</code> 验证码 | <code>{expiry}</code> 有效期 | <code>{qrUrl}</code> 二维码链接
+        </p>
+        <div class="form-group">
+          <label>📤 首次发送模板</label>
+          <textarea id="waTplSend" rows="6" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>🔄 重发模板</label>
+          <textarea id="waTplResend" rows="6" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>⏰ 到期提醒模板</label>
+          <textarea id="waTplReminder" rows="6" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="saveWATemplates()">💾 保存模板</button>
+      </div>
+      <div class="card">
         <h3>⏰ 到期提醒（7天内到期）</h3>
         <button class="btn btn-block" onclick="checkExpiryReminders()" style="margin-bottom:10px;">🔍 检查到期提醒</button>
         <div class="data-list" id="expiryReminderList"><div class="empty-state"><div class="icon">⏰</div><p>点击上方按钮检查</p></div></div>
@@ -335,6 +354,22 @@
       </div>
     </div>
 
+    <!-- 编辑员工弹窗 -->
+    <div id="editStaffModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;color:#333;">
+        <h3 style="color:#8b0000;margin-bottom:16px;">✏️ 编辑员工</h3>
+        <input type="hidden" id="editStaffRow">
+        <div class="form-group"><label>姓名</label><input type="text" id="editStaffName"></div>
+        <div class="form-group"><label>账号</label><input type="text" id="editStaffUsername"></div>
+        <div class="form-group"><label>新密码（留空则不修改）</label><input type="password" id="editStaffPassword" placeholder="留空不修改"></div>
+        <div class="form-group"><label>角色</label><select id="editStaffRole" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;"><option value="Staff">Staff (仅核销)</option><option value="Manager">Manager (核销+发WA)</option><option value="Boss">Boss (全部权限)</option></select></div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button class="btn btn-success" style="flex:1;" onclick="saveEditStaff()">💾 保存</button>
+          <button class="btn" style="flex:1;background:#999;color:#fff;" onclick="closeEditStaffModal()">取消</button>
+        </div>
+      </div>
+    </div>
+
     <div class="qr-scanner-container" id="qrScannerContainer">
       <div class="scanner-header">
         <h3>📷 扫描验证码</h3>
@@ -360,7 +395,7 @@
         this.classList.add('active');
         document.getElementById('tab-' + tab).classList.add('active');
         if (tab === 'records') loadRecords();
-        if (tab === 'whatsapp') loadWAList();
+        if (tab === 'whatsapp') { loadWAList(); loadWATemplates(); }
         if (tab === 'prizes') loadPrizes();
         if (tab === 'staff') loadStaff();
         if (tab === 'music') loadMusicSettings();
@@ -555,20 +590,21 @@
     }
     
     function sendWA(code, phone, prize, expiry) {
-      var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(code);
-      var msg = '【张崇会火锅】恭喜您中奖！🎉\n\n🎁 奖品：' + prize + '\n🔑 验证码：' + code + '\n📅 有效期至：' + expiry + '\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n' + qrUrl + '\n\n请到店出示此二维码给店员扫描兑换！';
-      window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
-      
       google.script.run.withSuccessHandler(function(r) {
-        loadWAList();
-        loadStats();
+        if (r.success) {
+          window.open(r.waLink, '_blank');
+          loadWAList();
+          loadStats();
+        } else {
+          alert('❌ ' + r.message);
+        }
       }).sendWhatsAppByCode(code, currentStaff.name, currentStaff.role);
     }
-    
+
     function manualSendWA() {
       var code = document.getElementById('waManualCode').value.trim().toUpperCase();
       if (!code) { alert('请输入验证码'); return; }
-      
+
       google.script.run.withSuccessHandler(function(r) {
         if (r.success) {
           window.open(r.waLink, '_blank');
@@ -578,6 +614,24 @@
           alert('❌ ' + r.message);
         }
       }).sendWhatsAppByCode(code, currentStaff.name, currentStaff.role);
+    }
+
+    // WA模板
+    function loadWATemplates() {
+      google.script.run.withSuccessHandler(function(t) {
+        document.getElementById('waTplSend').value = t.send;
+        document.getElementById('waTplResend').value = t.resend;
+        document.getElementById('waTplReminder').value = t.reminder;
+      }).getWATemplates();
+    }
+
+    function saveWATemplates() {
+      var send = document.getElementById('waTplSend').value;
+      var resend = document.getElementById('waTplResend').value;
+      var reminder = document.getElementById('waTplReminder').value;
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ ' + r.message : '❌ 保存失败');
+      }).saveWATemplates(send, resend, reminder);
     }
 
     // 到期提醒
@@ -681,12 +735,16 @@
       google.script.run.withSuccessHandler(function(staff) {
         var list = document.getElementById('staffList');
         list.innerHTML = staff.map(function(s) {
-          return '<div class="list-item">' +
+          return '<div class="list-item" style="flex-wrap:wrap;">' +
             '<div class="main-info">' +
               '<div class="title">' + s.name + ' <small style="color:#999;">@' + s.username + '</small></div>' +
               '<div class="meta">最后登录: ' + s.lastLogin + '</div>' +
             '</div>' +
-            '<span class="role-badge ' + s.role + '">' + s.role + '</span>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<span class="role-badge ' + s.role + '">' + s.role + '</span>' +
+              '<button class="btn btn-sm" style="background:#2196f3;color:#fff;" onclick="editStaff(' + s.row + ',\'' + s.name.replace(/'/g, "\\'") + '\',\'' + s.username.replace(/'/g, "\\'") + '\',\'' + s.role + '\')">✏️</button>' +
+              '<button class="btn btn-sm" style="background:#f44336;color:#fff;" onclick="deleteStaff(' + s.row + ',\'' + s.name.replace(/'/g, "\\'") + '\')">🗑️</button>' +
+            '</div>' +
           '</div>';
         }).join('');
       }).getStaffList();
@@ -710,7 +768,41 @@
         }
       }).addStaff(name, username, password, role);
     }
-    
+
+    function editStaff(row, name, username, role) {
+      document.getElementById('editStaffRow').value = row;
+      document.getElementById('editStaffName').value = name;
+      document.getElementById('editStaffUsername').value = username;
+      document.getElementById('editStaffPassword').value = '';
+      document.getElementById('editStaffRole').value = role;
+      document.getElementById('editStaffModal').style.display = 'flex';
+    }
+
+    function closeEditStaffModal() {
+      document.getElementById('editStaffModal').style.display = 'none';
+    }
+
+    function saveEditStaff() {
+      var row = parseInt(document.getElementById('editStaffRow').value);
+      var name = document.getElementById('editStaffName').value.trim();
+      var username = document.getElementById('editStaffUsername').value.trim();
+      var password = document.getElementById('editStaffPassword').value;
+      var role = document.getElementById('editStaffRole').value;
+      if (!name || !username) { alert('请填写姓名和账号'); return; }
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ ' + r.message : '❌ 更新失败');
+        if (r.success) { closeEditStaffModal(); loadStaff(); }
+      }).updateStaff(row, name, username, password, role);
+    }
+
+    function deleteStaff(row, name) {
+      if (!confirm('确定要删除员工「' + name + '」吗？此操作不可恢复。')) return;
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ ' + r.message : '❌ 删除失败');
+        if (r.success) loadStaff();
+      }).deleteStaff(row);
+    }
+
     // ==================== 音乐设置 ====================
     var testAudio = null;
     
