@@ -4,7 +4,7 @@
  * 功能：15格抽奖、积分30天过期、防重复邀请、权限分级
  */
 
-var APP_VERSION = 'v44';
+var APP_VERSION = 'v45';
 
 // ============ Web App 入口 ============
 function doGet(e) {
@@ -339,67 +339,93 @@ function doLottery(phone) {
   var v = validatePhone(phone);
   if (!v.valid) return { success: false, message: '手机号格式错误' };
   var p = v.phone;
-  
+
   var u = getUserInfo(p);
   if (!u.success) return { success: false, message: '请先登记' };
-  
+
   if (u.user.todayDraws >= 3) {
     return { success: false, message: '今日已抽3次，明天再来！' };
   }
-  
+
   if (u.user.points < 1) {
     return { success: false, message: '积分不足', inviteCode: u.user.inviteCode };
   }
-  
+
   if (!deductPoints(p)) {
     return { success: false, message: '积分不足', inviteCode: u.user.inviteCode };
   }
-  
-  // 获取奖品
-  var psh = getSheet(SH.PRIZES);
-  var pd = psh.getDataRange().getValues();
-  var available = [];
-  var totalWeight = 0;
-  
-  for (var i = 1; i < pd.length; i++) {
-    var remaining = (pd[i][3] || 0) - (pd[i][4] || 0);
-    var weight = pd[i][6] || 0;
-    if (remaining > 0 && weight > 0 && pd[i][9] === '启用') {
-      available.push({
-        row: i + 1,
-        name: pd[i][1],
-        icon: pd[i][2] || '🎁',
-        weight: weight,
-        isGrand: pd[i][8] === true || pd[i][8] === 'TRUE' || pd[i][8] === '是'
-      });
-      totalWeight += weight;
-    }
+
+  // 使用锁防止库存竞争条件
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000); // 等待最多10秒
+  } catch(e) {
+    addPointsToUser(p, 1); // 退还积分
+    return { success: false, message: '系统繁忙，请稍后重试' };
   }
-  
-  if (available.length === 0) {
+
+  try {
+    // 获取奖品（锁内读取确保数据一致）
+    var psh = getSheet(SH.PRIZES);
+    var pd = psh.getDataRange().getValues();
+    var available = [];
+    var totalWeight = 0;
+
+    for (var i = 1; i < pd.length; i++) {
+      var remaining = (pd[i][3] || 0) - (pd[i][4] || 0);
+      var weight = pd[i][6] || 0;
+      if (remaining > 0 && weight > 0 && pd[i][9] === '启用') {
+        available.push({
+          row: i + 1,
+          name: pd[i][1],
+          icon: pd[i][2] || '🎁',
+          weight: weight,
+          isGrand: pd[i][8] === true || pd[i][8] === 'TRUE' || pd[i][8] === '是'
+        });
+        totalWeight += weight;
+      }
+    }
+
+    if (available.length === 0) {
+      lock.releaseLock();
+      addPointsToUser(p, 1);
+      return { success: false, message: '奖品已抽完' };
+    }
+
+    // 随机选择
+    var rnd = Math.random() * totalWeight;
+    var selected = available[0];
+    for (var j = 0; j < available.length; j++) {
+      rnd -= available[j].weight;
+      if (rnd <= 0) {
+        selected = available[j];
+        break;
+      }
+    }
+
+    // 更新库存（锁内写入，确保原子性）
+    var freshUsed = psh.getRange(selected.row, 5).getValue() || 0;
+    var freshTotal = psh.getRange(selected.row, 4).getValue() || 0;
+    if (freshUsed >= freshTotal) {
+      // 库存已被其他人抢完，重新选择
+      lock.releaseLock();
+      addPointsToUser(p, 1);
+      return doLottery(phone); // 重试
+    }
+    psh.getRange(selected.row, 5).setValue(freshUsed + 1);
+    SpreadsheetApp.flush(); // 立即写入
+    lock.releaseLock();
+  } catch(e) {
+    lock.releaseLock();
     addPointsToUser(p, 1);
-    return { success: false, message: '奖品已抽完' };
+    return { success: false, message: '系统错误，请重试' };
   }
-  
-  // 随机选择
-  var rnd = Math.random() * totalWeight;
-  var selected = available[0];
-  for (var j = 0; j < available.length; j++) {
-    rnd -= available[j].weight;
-    if (rnd <= 0) {
-      selected = available[j];
-      break;
-    }
-  }
-  
-  // 更新库存
-  psh.getRange(selected.row, 5).setValue((pd[selected.row - 1][4] || 0) + 1);
-  
+
   // 生成验证码
   var code = 'ZCH' + Math.floor(100000 + Math.random() * 900000);
   var expiry = new Date();
   expiry.setDate(expiry.getDate() + 30);
-  
+
   // 记录
   var rsh = getSheet(SH.RECORDS);
   var rid = 'R' + String(rsh.getLastRow()).padStart(4, '0');
@@ -407,7 +433,7 @@ function doLottery(phone) {
     rid, new Date(), u.user.odoo, p, u.user.name,
     selected.name, code, expiry, '待发送', '', '未核销', '', '', ''
   ]);
-  
+
   // 更新用户抽奖次数
   var ush = getSheet(SH.USERS);
   var ud = ush.getDataRange().getValues();
@@ -418,9 +444,9 @@ function doLottery(phone) {
       break;
     }
   }
-  
+
   addLog('System', '', '抽奖', p + ' 抽中 ' + selected.name + ' (' + code + ')');
-  
+
   return {
     success: true,
     prize: { name: selected.name, icon: selected.icon, isGrand: selected.isGrand },
@@ -1020,6 +1046,158 @@ function initializeSystem() {
   }
   
   return '✅ 系统初始化完成！包含15个奖品和3个默认员工账号';
+}
+
+// ============ 压力测试 ============
+function loadTest100() {
+  var results = { success: 0, fail: 0, errors: [], prizeCount: {}, timings: [] };
+  var testPhones = [];
+
+  // 1. 注册100个测试用户（6090开头 + 6位）
+  for (var i = 0; i < 100; i++) {
+    var phone = '6090' + String(100000 + i);
+    testPhones.push(phone);
+  }
+
+  // 批量注册
+  var sh = getSheet(SH.USERS);
+  var existingData = sh.getDataRange().getValues();
+  var existingPhones = {};
+  for (var e = 1; e < existingData.length; e++) {
+    existingPhones[String(existingData[e][1])] = true;
+  }
+
+  var registered = 0;
+  for (var r = 0; r < testPhones.length; r++) {
+    if (!existingPhones[testPhones[r]]) {
+      var uid = 'T' + String(r).padStart(4, '0');
+      var code = 'TEST' + String(r).padStart(4, '0');
+      var now = new Date();
+      var expiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      sh.appendRow([uid, testPhones[r], '测试用户' + r, '', now, 3, expiry, 3, code, '', 0, 0, 0, '', '正常']);
+      registered++;
+    } else {
+      // 确保有积分
+      for (var x = 1; x < existingData.length; x++) {
+        if (String(existingData[x][1]) === testPhones[r]) {
+          sh.getRange(x + 1, 6).setValue(3);
+          sh.getRange(x + 1, 13).setValue(0); // 重置今日次数
+          break;
+        }
+      }
+    }
+  }
+  SpreadsheetApp.flush();
+
+  // 2. 记录测试前库存
+  var psh = getSheet(SH.PRIZES);
+  var beforePd = psh.getDataRange().getValues();
+  var beforeStock = {};
+  for (var b = 1; b < beforePd.length; b++) {
+    beforeStock[beforePd[b][1]] = { total: beforePd[b][3] || 0, used: beforePd[b][4] || 0 };
+  }
+
+  // 3. 执行100次抽奖（顺序执行，模拟高频）
+  var startTime = new Date().getTime();
+  for (var t = 0; t < 100; t++) {
+    var tStart = new Date().getTime();
+    try {
+      var res = doLottery(testPhones[t]);
+      var tEnd = new Date().getTime();
+      results.timings.push(tEnd - tStart);
+
+      if (res.success) {
+        results.success++;
+        var pName = res.prize.name;
+        results.prizeCount[pName] = (results.prizeCount[pName] || 0) + 1;
+      } else {
+        results.fail++;
+        results.errors.push('#' + (t + 1) + ': ' + res.message);
+      }
+    } catch(err) {
+      results.fail++;
+      results.errors.push('#' + (t + 1) + ': EXCEPTION: ' + err.toString());
+    }
+  }
+  var totalTime = new Date().getTime() - startTime;
+
+  // 4. 验证库存一致性
+  SpreadsheetApp.flush();
+  var afterPd = psh.getDataRange().getValues();
+  var stockIssues = [];
+  var totalIssued = 0;
+  for (var a = 1; a < afterPd.length; a++) {
+    var name = afterPd[a][1];
+    var afterUsed = afterPd[a][4] || 0;
+    var beforeUsed = beforeStock[name] ? beforeStock[name].used : 0;
+    var issued = afterUsed - beforeUsed;
+    totalIssued += issued;
+    var totalStock = afterPd[a][3] || 0;
+    if (afterUsed > totalStock) {
+      stockIssues.push(name + ': 超发! 已发' + afterUsed + '/总' + totalStock);
+    }
+  }
+
+  // 5. 计算统计
+  var avgTime = results.timings.length > 0 ? Math.round(results.timings.reduce(function(a, b) { return a + b; }, 0) / results.timings.length) : 0;
+  var maxTime = results.timings.length > 0 ? Math.max.apply(null, results.timings) : 0;
+  var minTime = results.timings.length > 0 ? Math.min.apply(null, results.timings) : 0;
+
+  return {
+    summary: '100次抽奖完成',
+    registered: registered + '个新测试用户',
+    successCount: results.success,
+    failCount: results.fail,
+    totalTime: totalTime + 'ms (' + (totalTime / 1000).toFixed(1) + '秒)',
+    avgTime: avgTime + 'ms/次',
+    minTime: minTime + 'ms',
+    maxTime: maxTime + 'ms',
+    totalIssued: totalIssued,
+    matchSuccess: totalIssued === results.success ? '✅ 库存一致' : '❌ 库存不一致! 发出' + totalIssued + ' vs 成功' + results.success,
+    stockIssues: stockIssues.length > 0 ? stockIssues : ['✅ 无超发'],
+    prizeDistribution: results.prizeCount,
+    errors: results.errors.length > 10 ? results.errors.slice(0, 10).concat(['... 共' + results.errors.length + '个错误']) : results.errors
+  };
+}
+
+// 清理测试数据
+function cleanTestData() {
+  // 删除6090开头的测试用户
+  var sh = getSheet(SH.USERS);
+  var data = sh.getDataRange().getValues();
+  var rowsToDelete = [];
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][1]).indexOf('6090') === 0) rowsToDelete.push(i + 1);
+  }
+  for (var d = 0; d < rowsToDelete.length; d++) {
+    sh.deleteRow(rowsToDelete[d]);
+  }
+
+  // 删除测试抽奖记录
+  var rsh = getSheet(SH.RECORDS);
+  var rdata = rsh.getDataRange().getValues();
+  var recRowsToDelete = [];
+  for (var r = rdata.length - 1; r >= 1; r--) {
+    if (String(rdata[r][3]).indexOf('6090') === 0) recRowsToDelete.push(r + 1);
+  }
+  for (var rd = 0; rd < recRowsToDelete.length; rd++) {
+    rsh.deleteRow(recRowsToDelete[rd]);
+  }
+
+  // 重新计算已发数量
+  var psh = getSheet(SH.PRIZES);
+  var pd = psh.getDataRange().getValues();
+  var remainingRecords = rsh.getDataRange().getValues();
+  for (var p = 1; p < pd.length; p++) {
+    var prizeName = pd[p][1];
+    var count = 0;
+    for (var rc = 1; rc < remainingRecords.length; rc++) {
+      if (remainingRecords[rc][5] === prizeName) count++;
+    }
+    psh.getRange(p + 1, 5).setValue(count);
+  }
+
+  return '✅ 测试数据已清理（删除' + rowsToDelete.length + '个测试用户，' + recRowsToDelete.length + '条抽奖记录，库存已重算）';
 }
 
 // ============ 音乐代理 ============
