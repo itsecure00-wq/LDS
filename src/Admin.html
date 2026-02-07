@@ -212,6 +212,14 @@
           </div>
         </div>
       </div>
+      <div class="card">
+        <h3>⏰ 到期提醒（7天内到期）</h3>
+        <button class="btn btn-block" onclick="checkExpiryReminders()" style="margin-bottom:10px;">🔍 检查到期提醒</button>
+        <div class="data-list" id="expiryReminderList"><div class="empty-state"><div class="icon">⏰</div><p>点击上方按钮检查</p></div></div>
+        <div style="margin-top:10px;">
+          <button class="btn btn-sm" onclick="setupTrigger()" style="background:#666;">⚙️ 设置每日自动检查</button>
+        </div>
+      </div>
     </div>
     
     <!-- 奖品设置 -->
@@ -529,7 +537,8 @@
         return;
       }
       list.innerHTML = records.map(function(r) {
-        var btn = r.waStatus === '待发送' ? '<button class="btn btn-sm btn-success" onclick="sendWA(\'' + r.code + '\',\'' + r.phone + '\',\'' + r.prize + '\',\'' + r.expiryDate + '\')">📤发送</button>' : '<span style="color:#999;font-size:10px;">' + r.waSentTime + '</span>';
+        var btn = '<button class="btn btn-sm btn-success" onclick="sendWA(\'' + r.code + '\',\'' + r.phone + '\',\'' + r.prize + '\',\'' + r.expiryDate + '\')">' + (r.waStatus === '待发送' ? '📤发送' : '🔄重发') + '</button>';
+        var sentInfo = r.waStatus === '已发送' ? '<div style="color:#999;font-size:10px;margin-top:3px;">' + r.waSentTime + '</div>' : '';
         return '<div class="list-item">' +
           '<div class="main-info">' +
             '<div class="title"><span class="code">' + r.code + '</span> ' + r.prize + '</div>' +
@@ -539,6 +548,7 @@
           '<div style="text-align:right;">' +
             '<span class="status-badge ' + (r.waStatus === '已发送' ? 'sent' : 'pending') + '">' + r.waStatus + '</span><br>' +
             '<div style="margin-top:5px;">' + btn + '</div>' +
+            sentInfo +
           '</div>' +
         '</div>';
       }).join('');
@@ -569,7 +579,41 @@
         }
       }).sendWhatsAppByCode(code, currentStaff.name, currentStaff.role);
     }
-    
+
+    // 到期提醒
+    function checkExpiryReminders() {
+      var list = document.getElementById('expiryReminderList');
+      list.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>检查中...</p></div>';
+      google.script.run.withSuccessHandler(function(reminders) {
+        if (!reminders || reminders.length === 0) {
+          list.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>暂无7天内到期的未兑换奖品</p></div>';
+          return;
+        }
+        list.innerHTML = reminders.map(function(r) {
+          return '<div class="list-item">' +
+            '<div class="main-info">' +
+              '<div class="title"><span class="code">' + r.code + '</span> ' + r.prize + '</div>' +
+              '<div class="subtitle">📱 ' + r.phone + '</div>' +
+              '<div class="meta">⚠️ 到期: ' + r.expiry + '</div>' +
+            '</div>' +
+            '<div style="text-align:right;">' +
+              '<button class="btn btn-sm" style="background:#ff9800;color:#fff;" onclick="window.open(\'' + r.waLink + '\',\'_blank\')">⏰ 发送提醒</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }).withFailureHandler(function() {
+        list.innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>检查失败</p></div>';
+      }).sendExpiryReminders();
+    }
+
+    function setupTrigger() {
+      google.script.run.withSuccessHandler(function(r) {
+        if (r.success) alert('✅ ' + r.message);
+      }).withFailureHandler(function() {
+        alert('❌ 设置失败');
+      }).setupExpiryReminderTrigger();
+    }
+
     // 奖品
     function loadPrizes() {
       google.script.run.withSuccessHandler(function(prizes) {

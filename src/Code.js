@@ -700,6 +700,59 @@ function updateStaffStatus(row, status) {
   return { success: true };
 }
 
+// ============ 到期提醒 ============
+function sendExpiryReminders() {
+  var sh = getSheet(SH.RECORDS);
+  var d = sh.getDataRange().getValues();
+  var today = new Date();
+  var reminders = [];
+
+  for (var i = 1; i < d.length; i++) {
+    if (d[i][10] !== '未核销') continue;
+    if (!d[i][7]) continue;
+
+    var expiry = new Date(d[i][7]);
+    var daysLeft = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+
+    if (daysLeft === 7) {
+      var phone = d[i][3];
+      var prize = d[i][5];
+      var code = d[i][6];
+      var expiryStr = Utilities.formatDate(expiry, 'Asia/Kuala_Lumpur', 'yyyy-MM-dd');
+      var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(code);
+
+      var msg = '【张崇会火锅】温馨提醒 ⏰\n\n您有一份奖品即将过期！\n\n🎁 奖品：' + prize + '\n🔑 验证码：' + code + '\n📅 有效期至：' + expiryStr + '（剩余7天）\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n' + qrUrl + '\n\n请尽快到店兑换，过期作废！';
+
+      reminders.push({
+        phone: phone,
+        code: code,
+        prize: prize,
+        expiry: expiryStr,
+        waLink: 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg)
+      });
+
+      addLog('System', '', '到期提醒', '提醒: ' + code + ' -> ' + phone + ' (7天后到期)');
+    }
+  }
+
+  return reminders;
+}
+
+function setupExpiryReminderTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'sendExpiryReminders') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger('sendExpiryReminders')
+    .timeBased()
+    .everyDays(1)
+    .atHour(9)
+    .create();
+  return { success: true, message: '已设置每日9点自动检查到期提醒' };
+}
+
 // ============ 获取部署URL ============
 function getDeploymentUrl() {
   return ScriptApp.getService().getUrl();
