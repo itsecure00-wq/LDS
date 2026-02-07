@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔧 张崇会火锅 - 后台管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Microsoft YaHei', sans-serif; background: #f0f2f5; min-height: 100vh; }
+    
+    .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #8b0000, #5c0000); }
+    .login-box { background: #fff; padding: 35px; border-radius: 16px; width: 90%; max-width: 360px; }
+    .login-box h1 { text-align: center; color: #8b0000; margin-bottom: 8px; }
+    .login-box .subtitle { text-align: center; color: #999; font-size: 12px; margin-bottom: 25px; }
+    .login-box input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 15px; margin-bottom: 15px; outline: none; }
+    .login-box input:focus { border-color: #8b0000; }
+    .login-box button { width: 100%; padding: 13px; background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+    .login-error { color: #cc0000; text-align: center; margin-bottom: 12px; font-size: 13px; display: none; }
+    
+    .admin-page { display: none; }
+    .admin-header { background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
+    .admin-header h1 { font-size: 16px; }
+    .admin-header .user-info { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .role-badge { padding: 3px 10px; border-radius: 10px; font-size: 11px; }
+    .role-badge.Boss, .role-badge.Admin { background: #ffd700; color: #8b0000; }
+    .role-badge.Manager { background: #4caf50; color: #fff; }
+    .role-badge.Staff { background: #2196f3; color: #fff; }
+    .logout-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+    
+    .stats-container { padding: 15px; background: linear-gradient(135deg, #8b0000, #a00000); }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .stat-card { background: rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; text-align: center; color: #fff; }
+    .stat-card .number { font-size: 22px; font-weight: bold; color: #ffd700; }
+    .stat-card .label { font-size: 10px; opacity: 0.9; }
+    
+    .tabs { display: flex; background: #fff; border-bottom: 1px solid #e0e0e0; overflow-x: auto; }
+    .tab-btn { flex: none; padding: 14px 16px; border: none; background: none; font-size: 13px; cursor: pointer; border-bottom: 3px solid transparent; color: #666; }
+    .tab-btn.active { color: #8b0000; border-bottom-color: #8b0000; font-weight: bold; }
+    .tab-btn.hidden { display: none; }
+    .tab-content { display: none; padding: 15px; }
+    .tab-content.active { display: block; }
+    
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 15px; }
+    .card h3 { color: #8b0000; margin-bottom: 12px; font-size: 15px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+    
+    .verify-section { background: linear-gradient(135deg, #fff9e6, #fff3cc); border: 2px solid #ffd700; border-radius: 12px; padding: 16px; margin-bottom: 15px; }
+    .verify-input { display: flex; gap: 10px; }
+    .verify-input input { flex: 1; padding: 14px; border: 2px solid #ffd700; border-radius: 10px; font-size: 18px; font-family: monospace; text-transform: uppercase; text-align: center; }
+    .verify-input button { padding: 14px 24px; background: #8b0000; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
+    .verify-result { margin-top: 15px; padding: 16px; border-radius: 12px; display: none; }
+    .verify-result.success { display: block; background: #e8f5e9; border: 2px solid #4caf50; }
+    .verify-result.error { display: block; background: #ffebee; border: 2px solid #f44336; }
+    .verify-result.warning { display: block; background: #fff3e0; border: 2px solid #ff9800; }
+    .verify-result .status { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+    .verify-result.success .status { color: #2e7d32; }
+    .verify-result.error .status { color: #c62828; }
+    .verify-result.warning .status { color: #e65100; }
+    .verify-result .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px; }
+    .verify-result .info-item { background: rgba(255,255,255,0.7); padding: 8px; border-radius: 6px; }
+    .verify-result .info-item label { color: #666; font-size: 11px; display: block; }
+    .verify-result .info-item span { font-weight: bold; color: #333; }
+    .verify-btn { margin-top: 14px; padding: 12px; background: #4caf50; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; }
+    
+    .list-filter { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filter-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 18px; font-size: 12px; cursor: pointer; }
+    .filter-btn.active { background: #8b0000; color: #fff; border-color: #8b0000; }
+    
+    .data-list { max-height: 400px; overflow-y: auto; }
+    .list-item { padding: 12px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .list-item:hover { background: #fafafa; }
+    .list-item .main-info { flex: 1; }
+    .list-item .title { font-weight: bold; color: #333; font-size: 13px; }
+    .list-item .code { font-family: monospace; color: #8b0000; background: #fff0f0; padding: 2px 6px; border-radius: 4px; }
+    .list-item .subtitle { font-size: 11px; color: #666; margin-top: 3px; }
+    .list-item .meta { font-size: 10px; color: #999; margin-top: 3px; }
+    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+    .status-badge.pending { background: #fff3e0; color: #e65100; }
+    .status-badge.verified { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.expired { background: #ffebee; color: #c62828; }
+    .status-badge.sent { background: #e3f2fd; color: #1565c0; }
+    
+    .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .data-table th, .data-table td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+    .data-table th { background: #fafafa; font-weight: bold; }
+    .data-table input { padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; width: 100%; }
+    .data-table select { padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; }
+    
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .btn-primary { background: #8b0000; color: #fff; }
+    .btn-success { background: #4caf50; color: #fff; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+    .btn-block { width: 100%; padding: 12px; margin-top: 12px; }
+    
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+    .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    
+    .empty-state { text-align: center; padding: 40px; color: #999; }
+    .empty-state .icon { font-size: 48px; }
+    
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .form-row { grid-template-columns: 1fr; }
+      .verify-input { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-page" id="loginPage">
+    <div class="login-box">
+      <h1>🍲 张崇会火锅</h1>
+      <div class="subtitle">后台管理系统</div>
+      <div class="login-error" id="loginError">账号或密码错误</div>
+      <input type="text" id="username" placeholder="账号">
+      <input type="password" id="password" placeholder="密码" onkeypress="if(event.keyCode==13)doLogin()">
+      <button onclick="doLogin()">登 录</button>
+    </div>
+  </div>
+  
+  <div class="admin-page" id="adminPage">
+    <div class="admin-header">
+      <h1>🍲 后台管理</h1>
+      <div class="user-info">
+        <span id="staffName">管理员</span>
+        <span class="role-badge" id="staffRole">Boss</span>
+        <button class="logout-btn" onclick="doLogout()">退出</button>
+      </div>
+    </div>
+    
+    <div class="stats-container">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="number" id="statUsers">-</div><div class="label">总用户</div></div>
+        <div class="stat-card"><div class="number" id="statToday">-</div><div class="label">今日抽奖</div></div>
+        <div class="stat-card"><div class="number" id="statPending">-</div><div class="label">待核销</div></div>
+        <div class="stat-card"><div class="number" id="statWA">-</div><div class="label">待发WA</div></div>
+      </div>
+    </div>
+    
+    <div class="tabs" id="tabsNav">
+      <button class="tab-btn active" data-tab="verify">🎫 验票</button>
+      <button class="tab-btn" data-tab="records">📋 记录</button>
+      <button class="tab-btn" data-tab="whatsapp" data-role="Manager,Boss,Admin">📱 WhatsApp</button>
+      <button class="tab-btn" data-tab="prizes" data-role="Boss,Admin">🎁 奖品</button>
+      <button class="tab-btn" data-tab="music" data-role="Boss,Admin">🎵 音乐</button>
+      <button class="tab-btn" data-tab="staff" data-role="Boss,Admin">👤 员工</button>
+    </div>
+    
+    <!-- 验票核销 -->
+    <div class="tab-content active" id="tab-verify">
+      <div class="verify-section">
+        <h3 style="color:#8b0000;margin-bottom:12px;">🎫 输入验证码核销</h3>
+        <div class="verify-input">
+          <input type="text" id="verifyCode" placeholder="ZCH123456" maxlength="12" onkeypress="if(event.keyCode==13)queryCode()">
+          <button onclick="queryCode()">🔍 查询</button>
+        </div>
+        <div class="verify-result" id="verifyResult">
+          <div class="status" id="verifyStatus"></div>
+          <div class="info-grid" id="verifyInfo"></div>
+          <button class="verify-btn" id="verifyBtn" onclick="confirmVerify()" style="display:none;">✅ 确认核销并发放奖品</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 中奖记录 -->
+    <div class="tab-content" id="tab-records">
+      <div class="card">
+        <h3>📋 中奖记录</h3>
+        <div class="list-filter">
+          <button class="filter-btn active" onclick="filterRecords('all')">全部</button>
+          <button class="filter-btn" onclick="filterRecords('pending')">待核销</button>
+          <button class="filter-btn" onclick="filterRecords('verified')">已核销</button>
+          <button class="filter-btn" onclick="filterRecords('expired')">已过期</button>
+        </div>
+        <div class="data-list" id="recordList"><div class="empty-state"><div class="icon">📋</div><p>加载中...</p></div></div>
+      </div>
+    </div>
+    
+    <!-- WhatsApp -->
+    <div class="tab-content" id="tab-whatsapp">
+      <div class="card">
+        <h3>📱 WhatsApp 验证码发送</h3>
+        <div class="list-filter">
+          <button class="filter-btn active" onclick="filterWA('pending')">待发送</button>
+          <button class="filter-btn" onclick="filterWA('sent')">已发送</button>
+          <button class="filter-btn" onclick="filterWA('all')">全部</button>
+        </div>
+        <div class="data-list" id="waList"><div class="empty-state"><div class="icon">📱</div><p>加载中...</p></div></div>
+      </div>
+      <div class="card">
+        <h3>✉️ 手动发送</h3>
+        <div class="form-group">
+          <label>验证码</label>
+          <div style="display:flex;gap:10px;">
+            <input type="text" id="waManualCode" placeholder="ZCH123456" style="flex:1;font-family:monospace;text-transform:uppercase;">
+            <button class="btn btn-success" onclick="manualSendWA()">📤 发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 奖品设置 -->
+    <div class="tab-content" id="tab-prizes">
+      <div class="card">
+        <h3>🎁 奖品配置 (15格)</h3>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="prizeTable">
+            <thead><tr><th>#</th><th>图标</th><th>奖品名称</th><th>库存</th><th>已发</th><th>剩余</th><th>权重</th><th>大奖</th><th>状态</th></tr></thead>
+            <tbody id="prizeTableBody"></tbody>
+          </table>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="savePrizes()">💾 保存修改</button>
+      </div>
+      <div class="card">
+        <h3>➕ 添加奖品</h3>
+        <div class="form-row">
+          <div class="form-group"><label>名称</label><input type="text" id="newPrizeName" placeholder="特级肥牛"></div>
+          <div class="form-group"><label>图标</label><input type="text" id="newPrizeIcon" placeholder="🥩"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>库存</label><input type="number" id="newPrizeStock" value="50"></div>
+          <div class="form-group"><label>权重</label><input type="number" id="newPrizeWeight" value="10"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>价值(RM)</label><input type="number" id="newPrizeValue" value="10"></div>
+          <div class="form-group"><label>大奖</label><select id="newPrizeGrand"><option value="0">否</option><option value="1">是(红色格子)</option></select></div>
+        </div>
+        <button class="btn btn-success btn-block" onclick="addNewPrize()">添加奖品</button>
+      </div>
+    </div>
+    
+    <!-- 音乐设置 -->
+    <div class="tab-content" id="tab-music">
+      <div class="card">
+        <h3>🎵 背景音乐设置</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:15px;">
+          设置抽奖页面的背景音乐和音效。支持 MP3 格式的在线音乐链接。<br>
+          <b>推荐：</b>使用 Google Drive 或其他云存储的直接下载链接。
+        </p>
+        
+        <div class="form-group">
+          <label>🎶 背景音乐 URL</label>
+          <input type="text" id="bgMusicUrl" placeholder="https://example.com/music.mp3">
+          <div style="font-size:10px;color:#999;margin-top:5px;">新春喜庆音乐，循环播放</div>
+        </div>
+        
+        <div class="form-group">
+          <label>🧨 鞭炮音效 URL</label>
+          <input type="text" id="firecrackerUrl" placeholder="https://example.com/firecracker.mp3">
+          <div style="font-size:10px;color:#999;margin-top:5px;">炮竹/烟花音效</div>
+        </div>
+        
+        <div class="form-group">
+          <label>音乐开关</label>
+          <select id="musicEnabled" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
+            <option value="true">启用音乐按钮</option>
+            <option value="false">隐藏音乐按钮</option>
+          </select>
+        </div>
+        
+        <button class="btn btn-primary btn-block" onclick="saveMusicSettings()">💾 保存音乐设置</button>
+      </div>
+      
+      <div class="card">
+        <h3>📋 推荐免费音乐资源</h3>
+        <div style="font-size:12px;line-height:1.8;">
+          <p><b>1. 上传到 Google Drive：</b></p>
+          <ol style="margin-left:20px;margin-bottom:15px;">
+            <li>上传 MP3 文件到 Google Drive</li>
+            <li>右键 → 获取链接 → 设为「知道链接的人都可查看」</li>
+            <li>复制链接，将 <code>/view</code> 改为 <code>/uc?export=download</code></li>
+          </ol>
+          
+          <p><b>2. 免费音效网站：</b></p>
+          <ul style="margin-left:20px;">
+            <li><a href="https://freesound.org" target="_blank">Freesound.org</a> - 免费音效</li>
+            <li><a href="https://pixabay.com/music" target="_blank">Pixabay Music</a> - 免费背景音乐</li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>🔊 测试音乐</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:10px;">点击下方按钮测试音乐是否能正常播放</p>
+        <button class="btn btn-success" onclick="testBgMusic()" style="margin-right:10px;">▶️ 测试背景音乐</button>
+        <button class="btn btn-success" onclick="testFirecracker()">▶️ 测试鞭炮音效</button>
+        <button class="btn" onclick="stopTestMusic()" style="margin-left:10px;background:#999;color:#fff;">⏹️ 停止</button>
+        <div id="musicTestResult" style="margin-top:10px;font-size:12px;"></div>
+      </div>
+    </div>
+    
+    <!-- 员工管理 -->
+    <div class="tab-content" id="tab-staff">
+      <div class="card">
+        <h3>👤 员工列表</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:12px;">
+          <b>Boss</b>: 全部权限 | <b>Manager</b>: 发验证码+核销+查积分 | <b>Staff</b>: 仅核销
+        </p>
+        <div class="data-list" id="staffList"></div>
+      </div>
+      <div class="card">
+        <h3>➕ 添加员工</h3>
+        <div class="form-row">
+          <div class="form-group"><label>姓名</label><input type="text" id="newStaffName"></div>
+          <div class="form-group"><label>账号</label><input type="text" id="newStaffUsername"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>密码</label><input type="password" id="newStaffPassword"></div>
+          <div class="form-group"><label>角色</label><select id="newStaffRole"><option value="Staff">Staff (仅核销)</option><option value="Manager">Manager (核销+发WA)</option><option value="Boss">Boss (全部权限)</option></select></div>
+        </div>
+        <button class="btn btn-success btn-block" onclick="addNewStaff()">添加员工</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var currentStaff = null;
+    var currentCode = null;
+    var recordFilter = 'all';
+    var waFilter = 'pending';
+    
+    // Tab切换
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tab = this.getAttribute('data-tab');
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        this.classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+        if (tab === 'records') loadRecords();
+        if (tab === 'whatsapp') loadWAList();
+        if (tab === 'prizes') loadPrizes();
+        if (tab === 'staff') loadStaff();
+        if (tab === 'music') loadMusicSettings();
+      });
+    });
+    
+    // 登录
+    function doLogin() {
+      var u = document.getElementById('username').value.trim();
+      var p = document.getElementById('password').value;
+      if (!u || !p) { alert('请输入账号和密码'); return; }
+      
+      google.script.run.withSuccessHandler(function(r) {
+        if (r.success) {
+          currentStaff = r.staff;
+          showAdminPage();
+        } else {
+          document.getElementById('loginError').style.display = 'block';
+        }
+      }).withFailureHandler(function(e) {
+        alert('登录失败: ' + e);
+      }).adminLogin(u, p);
+    }
+    
+    function showAdminPage() {
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('adminPage').style.display = 'block';
+      document.getElementById('staffName').textContent = currentStaff.name;
+      document.getElementById('staffRole').textContent = currentStaff.role;
+      document.getElementById('staffRole').className = 'role-badge ' + currentStaff.role;
+      
+      // 权限控制
+      document.querySelectorAll('.tab-btn[data-role]').forEach(function(btn) {
+        var roles = btn.getAttribute('data-role').split(',');
+        if (roles.indexOf(currentStaff.role) === -1) {
+          btn.classList.add('hidden');
+        }
+      });
+      
+      loadStats();
+    }
+    
+    function doLogout() {
+      currentStaff = null;
+      document.getElementById('loginPage').style.display = 'flex';
+      document.getElementById('adminPage').style.display = 'none';
+      document.getElementById('username').value = '';
+      document.getElementById('password').value = '';
+      document.getElementById('loginError').style.display = 'none';
+    }
+    
+    // 统计
+    function loadStats() {
+      google.script.run.withSuccessHandler(function(s) {
+        document.getElementById('statUsers').textContent = s.totalUsers || 0;
+        document.getElementById('statToday').textContent = s.todayDraws || 0;
+        document.getElementById('statPending').textContent = s.pending || 0;
+        document.getElementById('statWA').textContent = s.waPending || 0;
+      }).getStatistics();
+    }
+    
+    // 验票
+    function queryCode() {
+      var code = document.getElementById('verifyCode').value.trim().toUpperCase();
+      if (!code) { alert('请输入验证码'); return; }
+      
+      google.script.run.withSuccessHandler(function(r) {
+        var div = document.getElementById('verifyResult');
+        var sta = document.getElementById('verifyStatus');
+        var info = document.getElementById('verifyInfo');
+        var btn = document.getElementById('verifyBtn');
+        
+        div.className = 'verify-result';
+        btn.style.display = 'none';
+        currentCode = null;
+        
+        if (!r.found) {
+          div.classList.add('error');
+          sta.textContent = '❌ 验证码不存在';
+          info.innerHTML = '';
+        } else if (r.status === '已核销') {
+          div.classList.add('warning');
+          sta.textContent = '⚠️ 已核销';
+          info.innerHTML = '<div class="info-item"><label>奖品</label><span>' + r.prize + '</span></div>' +
+            '<div class="info-item"><label>核销时间</label><span>' + r.verifyTime + '</span></div>' +
+            '<div class="info-item"><label>核销员</label><span>' + r.verifyBy + '</span></div>';
+        } else if (r.status === '已过期') {
+          div.classList.add('error');
+          sta.textContent = '❌ 验证码已过期';
+          info.innerHTML = '<div class="info-item"><label>奖品</label><span>' + r.prize + '</span></div>' +
+            '<div class="info-item"><label>有效期</label><span>' + r.expiryDate + '</span></div>';
+        } else {
+          div.classList.add('success');
+          sta.textContent = '✅ 验证码有效';
+          info.innerHTML = '<div class="info-item"><label>🎁 奖品</label><span style="color:#2e7d32;font-size:16px;">' + r.prize + '</span></div>' +
+            '<div class="info-item"><label>👤 顾客</label><span>' + (r.name || r.phone) + '</span></div>' +
+            '<div class="info-item"><label>📱 手机</label><span>' + r.phone + '</span></div>' +
+            '<div class="info-item"><label>📅 有效期</label><span>' + r.expiryDate + '</span></div>';
+          btn.style.display = 'block';
+          currentCode = code;
+        }
+      }).queryCode(code);
+    }
+    
+    function confirmVerify() {
+      if (!currentCode) return;
+      if (!confirm('确认核销并发放奖品？')) return;
+      
+      google.script.run.withSuccessHandler(function(r) {
+        if (r.success) {
+          alert('✅ 核销成功！\n\n请发放奖品: ' + r.prize);
+          document.getElementById('verifyCode').value = '';
+          document.getElementById('verifyResult').className = 'verify-result';
+          document.getElementById('verifyBtn').style.display = 'none';
+          currentCode = null;
+          loadStats();
+        } else {
+          alert('❌ ' + r.message);
+        }
+      }).verifyCode(currentCode, currentStaff.name, currentStaff.role);
+    }
+    
+    // 记录列表
+    function loadRecords() {
+      google.script.run.withSuccessHandler(function(r) {
+        renderRecords(r.records);
+      }).getRecordList(recordFilter, 1, 50);
+    }
+    
+    function filterRecords(f) {
+      recordFilter = f;
+      document.querySelectorAll('#tab-records .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      event.target.classList.add('active');
+      loadRecords();
+    }
+    
+    function renderRecords(records) {
+      var list = document.getElementById('recordList');
+      if (!records || records.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>暂无记录</p></div>';
+        return;
+      }
+      list.innerHTML = records.map(function(r) {
+        var sc = r.status === '已核销' ? 'verified' : (r.status === '已过期' ? 'expired' : 'pending');
+        return '<div class="list-item">' +
+          '<div class="main-info">' +
+            '<div class="title"><span class="code">' + r.code + '</span> ' + r.prize + '</div>' +
+            '<div class="subtitle">📱 ' + r.phone + (r.name ? ' · ' + r.name : '') + '</div>' +
+            '<div class="meta">抽奖: ' + r.drawTime + ' | 有效期: ' + r.expiryDate + (r.verifyTime ? ' | 核销: ' + r.verifyTime : '') + '</div>' +
+          '</div>' +
+          '<span class="status-badge ' + sc + '">' + r.status + '</span>' +
+        '</div>';
+      }).join('');
+    }
+    
+    // WhatsApp
+    function loadWAList() {
+      google.script.run.withSuccessHandler(function(r) {
+        renderWAList(r.records);
+      }).getWAList(waFilter);
+    }
+    
+    function filterWA(f) {
+      waFilter = f;
+      document.querySelectorAll('#tab-whatsapp .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      event.target.classList.add('active');
+      loadWAList();
+    }
+    
+    function renderWAList(records) {
+      var list = document.getElementById('waList');
+      if (!records || records.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">📱</div><p>暂无记录</p></div>';
+        return;
+      }
+      list.innerHTML = records.map(function(r) {
+        var btn = r.waStatus === '待发送' ? '<button class="btn btn-sm btn-success" onclick="sendWA(\'' + r.code + '\',\'' + r.phone + '\',\'' + r.prize + '\',\'' + r.expiryDate + '\')">📤发送</button>' : '<span style="color:#999;font-size:10px;">' + r.waSentTime + '</span>';
+        return '<div class="list-item">' +
+          '<div class="main-info">' +
+            '<div class="title"><span class="code">' + r.code + '</span> ' + r.prize + '</div>' +
+            '<div class="subtitle">📱 ' + r.phone + '</div>' +
+            '<div class="meta">有效期: ' + r.expiryDate + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<span class="status-badge ' + (r.waStatus === '已发送' ? 'sent' : 'pending') + '">' + r.waStatus + '</span><br>' +
+            '<div style="margin-top:5px;">' + btn + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+    
+    function sendWA(code, phone, prize, expiry) {
+      var msg = '【张崇会火锅】恭喜您中奖！🎉\n\n🎁 奖品：' + prize + '\n🔑 验证码：' + code + '\n📅 有效期至：' + expiry + '\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n请到店出示验证码兑换！';
+      window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+      
+      google.script.run.withSuccessHandler(function(r) {
+        loadWAList();
+        loadStats();
+      }).sendWhatsAppByCode(code, currentStaff.name, currentStaff.role);
+    }
+    
+    function manualSendWA() {
+      var code = document.getElementById('waManualCode').value.trim().toUpperCase();
+      if (!code) { alert('请输入验证码'); return; }
+      
+      google.script.run.withSuccessHandler(function(r) {
+        if (r.success) {
+          window.open(r.waLink, '_blank');
+          document.getElementById('waManualCode').value = '';
+          loadWAList();
+        } else {
+          alert('❌ ' + r.message);
+        }
+      }).sendWhatsAppByCode(code, currentStaff.name, currentStaff.role);
+    }
+    
+    // 奖品
+    function loadPrizes() {
+      google.script.run.withSuccessHandler(function(prizes) {
+        var tbody = document.getElementById('prizeTableBody');
+        tbody.innerHTML = prizes.map(function(p, i) {
+          return '<tr data-row="' + p.row + '">' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td><input type="text" class="p-icon" value="' + p.icon + '" style="width:40px;text-align:center;"></td>' +
+            '<td><input type="text" class="p-name" value="' + p.name + '" style="width:80px;"></td>' +
+            '<td><input type="number" class="p-stock" value="' + p.totalStock + '" style="width:50px;"></td>' +
+            '<td>' + p.usedStock + '</td>' +
+            '<td style="color:' + (p.remaining <= 5 ? 'red' : 'green') + ';font-weight:bold;">' + p.remaining + '</td>' +
+            '<td><input type="number" class="p-weight" value="' + p.weight + '" style="width:50px;"></td>' +
+            '<td><select class="p-grand"><option value="0"' + (!p.isGrand ? ' selected' : '') + '>否</option><option value="1"' + (p.isGrand ? ' selected' : '') + '>是</option></select></td>' +
+            '<td><select class="p-status"><option' + (p.status === '启用' ? ' selected' : '') + '>启用</option><option' + (p.status === '停用' ? ' selected' : '') + '>停用</option></select></td>' +
+          '</tr>';
+        }).join('');
+      }).getPrizeConfig();
+    }
+    
+    function savePrizes() {
+      var rows = document.querySelectorAll('#prizeTableBody tr');
+      var prizes = [];
+      rows.forEach(function(tr) {
+        prizes.push({
+          row: parseInt(tr.getAttribute('data-row')),
+          icon: tr.querySelector('.p-icon').value,
+          name: tr.querySelector('.p-name').value,
+          totalStock: parseInt(tr.querySelector('.p-stock').value) || 0,
+          weight: parseInt(tr.querySelector('.p-weight').value) || 0,
+          isGrand: tr.querySelector('.p-grand').value === '1',
+          status: tr.querySelector('.p-status').value
+        });
+      });
+      
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ 保存成功' : '❌ 保存失败');
+        loadPrizes();
+      }).savePrizeConfig(prizes);
+    }
+    
+    function addNewPrize() {
+      var name = document.getElementById('newPrizeName').value.trim();
+      if (!name) { alert('请输入奖品名称'); return; }
+      
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ 添加成功' : '❌ 添加失败');
+        if (r.success) {
+          document.getElementById('newPrizeName').value = '';
+          document.getElementById('newPrizeIcon').value = '';
+          loadPrizes();
+        }
+      }).addPrize(
+        name,
+        document.getElementById('newPrizeIcon').value || '🎁',
+        parseInt(document.getElementById('newPrizeStock').value) || 50,
+        parseInt(document.getElementById('newPrizeWeight').value) || 10,
+        parseInt(document.getElementById('newPrizeValue').value) || 10,
+        document.getElementById('newPrizeGrand').value === '1'
+      );
+    }
+    
+    // 员工
+    function loadStaff() {
+      google.script.run.withSuccessHandler(function(staff) {
+        var list = document.getElementById('staffList');
+        list.innerHTML = staff.map(function(s) {
+          return '<div class="list-item">' +
+            '<div class="main-info">' +
+              '<div class="title">' + s.name + ' <small style="color:#999;">@' + s.username + '</small></div>' +
+              '<div class="meta">最后登录: ' + s.lastLogin + '</div>' +
+            '</div>' +
+            '<span class="role-badge ' + s.role + '">' + s.role + '</span>' +
+          '</div>';
+        }).join('');
+      }).getStaffList();
+    }
+    
+    function addNewStaff() {
+      var name = document.getElementById('newStaffName').value.trim();
+      var username = document.getElementById('newStaffUsername').value.trim();
+      var password = document.getElementById('newStaffPassword').value;
+      var role = document.getElementById('newStaffRole').value;
+      
+      if (!name || !username || !password) { alert('请填写完整信息'); return; }
+      
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ 添加成功' : '❌ 添加失败');
+        if (r.success) {
+          document.getElementById('newStaffName').value = '';
+          document.getElementById('newStaffUsername').value = '';
+          document.getElementById('newStaffPassword').value = '';
+          loadStaff();
+        }
+      }).addStaff(name, username, password, role);
+    }
+    
+    // ==================== 音乐设置 ====================
+    var testAudio = null;
+    
+    function loadMusicSettings() {
+      google.script.run.withSuccessHandler(function(settings) {
+        document.getElementById('bgMusicUrl').value = settings.bgMusicUrl || '';
+        document.getElementById('firecrackerUrl').value = settings.firecrackerUrl || '';
+        document.getElementById('musicEnabled').value = settings.musicEnabled !== false ? 'true' : 'false';
+      }).getMusicSettings();
+    }
+    
+    function saveMusicSettings() {
+      var bgUrl = document.getElementById('bgMusicUrl').value.trim();
+      var fcUrl = document.getElementById('firecrackerUrl').value.trim();
+      var enabled = document.getElementById('musicEnabled').value === 'true';
+      
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ ' + r.message : '❌ 保存失败');
+      }).saveMusicSettings(bgUrl, fcUrl, enabled);
+    }
+    
+    function testBgMusic() {
+      var url = document.getElementById('bgMusicUrl').value.trim();
+      var result = document.getElementById('musicTestResult');
+      
+      if (!url) {
+        result.innerHTML = '<span style="color:#e65100;">⚠️ 请先输入背景音乐URL</span>';
+        return;
+      }
+      
+      stopTestMusic();
+      result.innerHTML = '<span style="color:#666;">⏳ 加载中...</span>';
+      
+      testAudio = new Audio(url);
+      testAudio.oncanplay = function() {
+        result.innerHTML = '<span style="color:#2e7d32;">✅ 音乐加载成功，正在播放...</span>';
+        testAudio.play();
+      };
+      testAudio.onerror = function() {
+        result.innerHTML = '<span style="color:#c62828;">❌ 音乐加载失败，请检查URL是否正确</span>';
+      };
+    }
+    
+    function testFirecracker() {
+      var url = document.getElementById('firecrackerUrl').value.trim();
+      var result = document.getElementById('musicTestResult');
+      
+      if (!url) {
+        result.innerHTML = '<span style="color:#e65100;">⚠️ 请先输入鞭炮音效URL</span>';
+        return;
+      }
+      
+      stopTestMusic();
+      result.innerHTML = '<span style="color:#666;">⏳ 加载中...</span>';
+      
+      testAudio = new Audio(url);
+      testAudio.oncanplay = function() {
+        result.innerHTML = '<span style="color:#2e7d32;">✅ 音效加载成功，正在播放...</span>';
+        testAudio.play();
+      };
+      testAudio.onerror = function() {
+        result.innerHTML = '<span style="color:#c62828;">❌ 音效加载失败，请检查URL是否正确</span>';
+      };
+    }
+    
+    function stopTestMusic() {
+      if (testAudio) {
+        testAudio.pause();
+        testAudio = null;
+      }
+      document.getElementById('musicTestResult').innerHTML = '';
+    }
+  </script>
+</body>
+</html>

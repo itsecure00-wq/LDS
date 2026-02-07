@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>张崇会火锅百万镇 · 新春抽奖</title>
+  <meta property="og:title" content="张崇会火锅百万镇 · 新春抽奖">
+  <meta property="og:description" content="🐴 马年新春抽奖 100%中奖！点击参与赢取丰富奖品！">
+  <meta name="description" content="张崇会火锅百万镇分店新春抽奖活动">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Microsoft YaHei', sans-serif; background: linear-gradient(180deg, #8B0000 0%, #5C0000 50%, #3D0000 100%); background-attachment: fixed; color: #fff; }
+    .container { max-width: 480px; margin: 0 auto; padding: 12px; }
+    
+    /* 灯笼 */
+    .lanterns { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 15px; pointer-events: none; z-index: 100; }
+    .lantern { font-size: 36px; animation: swing 3s ease-in-out infinite; }
+    @keyframes swing { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+    
+    /* 飘落 */
+    .falling-items { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+    .falling-item { position: absolute; top: -50px; animation: fall linear infinite; opacity: 0.4; }
+    @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
+    
+    /* 音乐按钮 */
+    .music-btn { position: fixed; top: 12px; right: 12px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,215,0,0.9); border: none; font-size: 20px; cursor: pointer; z-index: 200; }
+    
+    /* 头部 */
+    .store-header { background: linear-gradient(135deg, #e84a0e 0%, #f26522 50%, #f58220 100%); border-radius: 16px; padding: 30px 20px; text-align: center; margin-bottom: 15px; position: relative; z-index: 10; box-shadow: 0 6px 20px rgba(232,74,14,0.4); overflow: hidden; }
+    .store-header::before { content: ''; position: absolute; top: -50%; right: -20%; width: 200px; height: 200px; background: rgba(255,255,255,0.08); border-radius: 50%; }
+    .store-name-cn { font-size: 46px; font-weight: 900; color: #fff; letter-spacing: 8px; margin-bottom: 8px; text-shadow: 3px 3px 6px rgba(0,0,0,0.4); }
+    .store-name-en { font-size: 24px; color: #fff; font-weight: 900; letter-spacing: 10px; margin-bottom: 8px; text-transform: uppercase; text-shadow: 2px 2px 4px rgba(0,0,0,0.4); }
+    .store-branch { font-size: 18px; color: #ffd700; margin-bottom: 18px; letter-spacing: 8px; font-weight: bold; }
+    .event-banner { background: rgba(0,0,0,0.3); border-radius: 25px; padding: 10px 20px; display: inline-block; border: 2px solid #ffd700; }
+    .event-banner-text { color: #fff; font-size: 13px; font-weight: bold; }
+    .event-banner-text .highlight { color: #ffd700; font-size: 14px; font-weight: 900; }
+    
+    /* 抽奖格子 */
+    .lottery-section { background: #fff; border-radius: 16px; padding: 12px; margin-bottom: 12px; position: relative; z-index: 10; border: 3px solid #ff6600; }
+    .lottery-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .prize-cell { background: linear-gradient(135deg, #fff5f5, #ffe8e8); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: #8b0000; font-weight: bold; border: 2px solid #ffcccc; padding: 8px 4px; text-align: center; min-height: 70px; transition: all 0.1s; }
+    .prize-cell.grand { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; border-color: #ffd700; }
+    .prize-cell .icon { font-size: 22px; margin-bottom: 2px; }
+    .prize-cell .name { font-size: 9px; line-height: 1.2; }
+    .prize-cell.active { transform: scale(1.08); box-shadow: 0 0 20px #ffd700; border-color: #ffd700 !important; z-index: 10; }
+    
+    /* 按钮 */
+    .bottom-btn { background: linear-gradient(135deg, #ffd700, #ffb800); color: #8b0000; border: none; border-radius: 25px; padding: 16px; font-size: 20px; font-weight: bold; width: 100%; cursor: pointer; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(255,215,0,0.4); position: relative; z-index: 10; }
+    .query-btn { background: rgba(255,255,255,0.2); color: #ffd700; border: 2px solid #ffd700; border-radius: 20px; padding: 10px; font-size: 14px; width: 100%; cursor: pointer; margin-bottom: 12px; position: relative; z-index: 10; }
+    
+    /* 规则 */
+    .rules-section { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px; margin-bottom: 12px; position: relative; z-index: 10; }
+    .rules-title { color: #ffd700; font-size: 13px; margin-bottom: 8px; text-align: center; }
+    .rules-list { font-size: 10px; color: #ffcccc; line-height: 1.7; list-style: none; }
+    .rules-list li { margin-bottom: 2px; }
+    
+    /* 条款 */
+    .legal-section { background: rgba(0,0,0,0.4); border-radius: 12px; padding: 14px; margin-bottom: 12px; position: relative; z-index: 10; }
+    .legal-title { color: #ffd700; font-size: 13px; margin-bottom: 10px; text-align: center; border-bottom: 1px solid rgba(255,215,0,0.3); padding-bottom: 8px; }
+    .legal-content { font-size: 10px; color: rgba(255,255,255,0.7); line-height: 1.8; }
+    .legal-content p { margin-bottom: 6px; }
+    .legal-content strong { color: #ffd700; }
+    
+    .disclaimer { font-size: 9px; color: rgba(255,255,255,0.35); text-align: center; padding: 10px; position: relative; z-index: 10; }
+    
+    /* 弹窗 */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.88); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: linear-gradient(135deg, #cc0000, #8b0000); border-radius: 18px; padding: 22px; text-align: center; max-width: 360px; width: 100%; border: 3px solid #ffd700; max-height: 90vh; overflow-y: auto; }
+    
+    /* 登记弹窗 */
+    .register-modal .modal { background: linear-gradient(135deg, #fff, #f8f8f8); color: #333; }
+    .register-modal .modal h2 { color: #8b0000; font-size: 18px; margin-bottom: 15px; }
+    .form-group { margin-bottom: 14px; text-align: left; }
+    .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: #8b0000; font-weight: bold; }
+    .form-group input { width: 100%; padding: 11px; border: 2px solid #ddd; border-radius: 10px; font-size: 15px; }
+    .form-group .hint { font-size: 10px; color: #999; margin-top: 3px; }
+    .error-msg { color: #ff4444; font-size: 10px; margin-top: 3px; display: none; }
+    .register-btn { width: 100%; padding: 13px; background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
+    .terms-notice { font-size: 9px; color: #999; margin-top: 12px; }
+    
+    /* 中奖弹窗 */
+    .result-modal .modal h2 { color: #ffd700; font-size: 20px; margin-bottom: 10px; }
+    .result-modal .prize-icon { font-size: 60px; display: block; margin-bottom: 8px; }
+    .result-modal .prize-name { font-size: 22px; font-weight: bold; color: #fff; margin-bottom: 15px; }
+    .result-modal .notice-box { background: rgba(255,255,255,0.95); color: #333; padding: 14px; border-radius: 12px; margin-bottom: 15px; text-align: left; font-size: 12px; line-height: 1.7; }
+    .result-modal .notice-box .highlight { color: #cc0000; font-weight: bold; }
+    .result-modal .notice-box .wa-notice { background: #25D366; color: #fff; padding: 8px; border-radius: 8px; margin-top: 10px; text-align: center; font-size: 11px; }
+    .result-modal .share-box { background: rgba(255,215,0,0.15); border: 1px solid #ffd700; border-radius: 10px; padding: 12px; margin-bottom: 15px; }
+    .result-modal .share-box p { font-size: 11px; color: #ffd700; margin-bottom: 8px; }
+    .result-modal .invite-code { background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; font-family: monospace; font-size: 18px; font-weight: bold; color: #8b0000; letter-spacing: 3px; text-align: center; margin-bottom: 10px; }
+    .share-btn { width: 100%; background: linear-gradient(135deg, #25D366, #128C7E); color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+    .close-btn { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #8b0000; border: none; padding: 12px 30px; border-radius: 22px; font-size: 14px; font-weight: bold; cursor: pointer; }
+    
+    /* 烟花 */
+    .fireworks-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 999; }
+    
+    /* 加载 */
+    .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 2000; }
+    .loading-overlay.show { display: flex; }
+    .loading-spinner { width: 50px; height: 50px; border: 4px solid #ffd700; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <button class="music-btn" id="musicBtn" onclick="toggleMusic()">🔇</button>
+  <div class="lanterns"><span class="lantern">🏮</span><span class="lantern">🏮</span></div>
+  <div class="falling-items" id="fallingItems"></div>
+  <div class="fireworks-container" id="fireworksContainer"></div>
+  <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
+  
+  <div class="container">
+    <div class="store-header">
+      <div class="store-name-cn">张崇会火锅</div>
+      <div class="store-name-en">HUI HOTPOT</div>
+      <div class="store-branch">百万镇分店</div>
+      <div class="event-banner">
+        <span class="event-banner-text">🐴 马年新春抽奖 · <span class="highlight">100%中奖</span></span>
+      </div>
+    </div>
+    
+    <div class="lottery-section">
+      <div class="lottery-grid" id="lotteryGrid"></div>
+    </div>
+    
+    <button class="bottom-btn" id="bottomBtn" onclick="handleLotteryClick()">🎰 点击抽奖</button>
+    <button class="query-btn" onclick="showQueryModal()">🔍 查询我的积分和奖品</button>
+    
+    <div class="rules-section">
+      <div class="rules-title">📋 活动规则</div>
+      <ul class="rules-list">
+        <li>🎯 首次登记即获得 <b style="color:#ffd700">1积分</b>，可立即抽奖</li>
+        <li>📤 分享链接给朋友，朋友登记后您获得 <b style="color:#ffd700">1积分</b></li>
+        <li>🔄 每日最多抽奖 <b style="color:#ffd700">3次</b>，每次消耗1积分</li>
+        <li>⏰ 积分有效期 <b style="color:#ffd700">30天</b>，过期自动清零</li>
+        <li>📱 验证码将在24小时内通过 <b style="color:#25D366">WhatsApp</b> 发送</li>
+        <li>🍽️ 奖品仅限 <b style="color:#ffd700">周一至周四堂食</b> 使用</li>
+        <li>🧾 每张收据限兑换 <b style="color:#ffd700">1份</b> 奖品</li>
+        <li>📅 验证码有效期 <b style="color:#ffd700">30天</b></li>
+      </ul>
+    </div>
+    
+    <div class="legal-section">
+      <div class="legal-title">📜 条款与细则</div>
+      <div class="legal-content">
+        <p><strong>1. 活动主办方</strong> 本活动由张崇会火锅（百万镇分店）主办。</p>
+        <p><strong>2. 参与资格</strong> 须年满18岁，持有效马来西亚(60)或新加坡(65)手机号。每人限用一个手机号参与。</p>
+        <p><strong>3. 奖品兑换</strong> 仅限周一至周四堂食，不可兑换现金或转让。每张收据限兑换1份奖品。验证码有效期30天，逾期作废。</p>
+        <p><strong>4. 邀请规则</strong> 仅限邀请新用户获得积分，已注册用户无法重复获得邀请积分。</p>
+        <p><strong>5. 免责声明</strong> 主办方保留修改、暂停或终止活动的权利。如有争议，主办方保留最终决定权。</p>
+        <p style="text-align:center;margin-top:10px;color:#ffd700;"><strong>参与本活动即表示您同意以上条款</strong></p>
+      </div>
+    </div>
+    
+    <div class="disclaimer">© 2026 张崇会火锅 · 活动期间：2026年1月15日 - 2月28日</div>
+  </div>
+  
+  <!-- 登记弹窗 -->
+  <div class="modal-overlay register-modal" id="registerModal">
+    <div class="modal">
+      <h2>📱 输入手机号码参与抽奖</h2>
+      <div class="form-group">
+        <label>📱 手机号码 (WhatsApp)</label>
+        <input type="tel" id="inputPhone" placeholder="例: 0123456789">
+        <div class="hint">🇲🇾 马来西亚: 0123456789 或 60123456789</div>
+        <div class="hint">🇸🇬 新加坡: 91234567 或 6591234567</div>
+        <div class="error-msg" id="phoneError">请输入有效的手机号码</div>
+      </div>
+      <button class="register-btn" id="registerBtn" onclick="doRegister()">🎰 开始抽奖</button>
+      <div class="terms-notice">验证码将通过 WhatsApp 发送到此号码<br>点击即表示您同意《条款与细则》</div>
+    </div>
+  </div>
+  
+  <!-- 中奖弹窗 -->
+  <div class="modal-overlay result-modal" id="resultModal">
+    <div class="modal">
+      <h2>🎉 恭喜中奖 🎉</h2>
+      <span class="prize-icon" id="resultIcon">🎁</span>
+      <div class="prize-name" id="resultPrize">奖品名称</div>
+      <div class="notice-box">
+        <p>📱 验证码将在 <span class="highlight">24小时内</span> 通过WhatsApp发送</p>
+        <p>📅 有效期至：<span class="highlight" id="resultExpiry">2026年3月1日</span></p>
+        <p>🍽️ 仅限 <span class="highlight">周一至周四堂食</span> 使用</p>
+        <p>🧾 每张收据限兑换 <span class="highlight">1份</span> 奖品</p>
+        <p>📍 地点：<span class="highlight">张崇会火锅 百万镇分店</span></p>
+        <div class="wa-notice">📲 请留意 WhatsApp 消息，凭验证码到店兑换</div>
+      </div>
+      <div class="share-box">
+        <p>🎁 分享给朋友，朋友登记后您将获得1积分继续抽奖！</p>
+        <div class="invite-code" id="resultInviteCode">------</div>
+        <button class="share-btn" onclick="shareToWhatsApp()">📤 立即分享给朋友</button>
+      </div>
+      <button class="close-btn" onclick="closeResultModal()">我知道了</button>
+    </div>
+  </div>
+  
+  <!-- 积分不足弹窗 -->
+  <div class="modal-overlay" id="shareModal">
+    <div class="modal" style="background:linear-gradient(135deg,#fff,#f5f5f5);">
+      <h2 style="color:#8b0000;">😊 积分不足</h2>
+      <div style="font-size:50px;margin:15px 0;">🎁</div>
+      <p style="color:#333;font-size:14px;margin-bottom:20px;">您的积分已用完<br>分享给朋友即可获得积分继续抽奖！</p>
+      <div style="background:#fff9e6;border:2px solid #ffd700;border-radius:12px;padding:15px;margin-bottom:20px;">
+        <p style="color:#8b0000;font-size:12px;margin-bottom:8px;">您的专属邀请码</p>
+        <div style="background:#fff;padding:12px;border-radius:8px;font-family:monospace;font-size:22px;font-weight:bold;color:#8b0000;letter-spacing:4px;" id="shareInviteCode">------</div>
+      </div>
+      <button class="share-btn" onclick="shareToWhatsApp()">📤 立即分享给朋友</button>
+      <button onclick="closeShareModal()" style="background:none;border:none;color:#999;margin-top:15px;font-size:12px;cursor:pointer;">稍后再说</button>
+    </div>
+  </div>
+  
+  <!-- 查询弹窗 -->
+  <div class="modal-overlay" id="queryModal">
+    <div class="modal" style="background:linear-gradient(135deg,#fff,#f8f8f8);color:#333;">
+      <h2 style="color:#8b0000;">🔍 查询我的积分和奖品</h2>
+      <div class="form-group">
+        <label style="color:#8b0000;font-weight:bold;">📱 输入手机号码</label>
+        <input type="tel" id="queryPhone" placeholder="例: 0123456789">
+        <div style="font-size:10px;color:#999;margin-top:5px;">🇲🇾 马来西亚 | 🇸🇬 新加坡</div>
+      </div>
+      <button onclick="doQuery()" style="width:100%;padding:12px;background:#8b0000;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;">🔍 查询</button>
+      <div id="queryResult" style="display:none;margin-top:15px;text-align:left;">
+        <div style="background:#fff9e6;border:2px solid #ffd700;border-radius:10px;padding:12px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:#666;">我的积分</span>
+            <span style="font-size:28px;font-weight:bold;color:#8b0000;" id="queryPoints">0</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+            <span style="color:#666;">今日已抽</span>
+            <span style="font-size:18px;font-weight:bold;color:#666;" id="queryDraws">0/3</span>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;">
+          <h4 style="color:#8b0000;margin-bottom:10px;">🎁 我的奖品</h4>
+          <div id="queryPrizeList" style="max-height:150px;overflow-y:auto;"><p style="color:#999;text-align:center;">暂无奖品</p></div>
+        </div>
+      </div>
+      <button onclick="closeQueryModal()" style="background:none;border:none;color:#999;margin-top:15px;font-size:12px;cursor:pointer;">关闭</button>
+    </div>
+  </div>
+
+  <script>
+    var prizes = [
+      { id: 1, name: '200元霸王餐', icon: '👑', isGrand: true },
+      { id: 2, name: '特级肥牛', icon: '🥩', isGrand: true },
+      { id: 3, name: '精品毛肚', icon: '🫀', isGrand: false },
+      { id: 4, name: '鲜切羊肉', icon: '🐑', isGrand: false },
+      { id: 5, name: '手工虾滑', icon: '🦐', isGrand: false },
+      { id: 6, name: '五花肉', icon: '🥓', isGrand: false },
+      { id: 7, name: '时蔬拼盘', icon: '🥬', isGrand: false },
+      { id: 8, name: '暴打柠檬茶', icon: '🍋', isGrand: false },
+      { id: 9, name: '酸梅汤', icon: '🧃', isGrand: false },
+      { id: 10, name: '冰豆花', icon: '🍮', isGrand: false },
+      { id: 11, name: '绵绵冰', icon: '🍧', isGrand: false },
+      { id: 12, name: '10元代金券', icon: '🎫', isGrand: false },
+      { id: 13, name: '5元代金券', icon: '🎟️', isGrand: false },
+      { id: 14, name: '小食一份', icon: '🍿', isGrand: false },
+      { id: 15, name: '麻辣锅底', icon: '🍲', isGrand: true }
+    ];
+    
+    var currentUser = null, isSpinning = false, referrerCode = '', deploymentUrl = '', musicPlaying = false;
+    
+    window.onload = function() {
+      referrerCode = new URLSearchParams(window.location.search).get('ref') || '';
+      renderGrid();
+      createFallingItems();
+      google.script.run.withSuccessHandler(function(url) { deploymentUrl = url; }).getDeploymentUrl();
+      google.script.run.withSuccessHandler(function(s) { if (!s.musicEnabled) document.getElementById('musicBtn').style.display = 'none'; }).getMusicSettings();
+    };
+    
+    function renderGrid() {
+      var grid = document.getElementById('lotteryGrid');
+      grid.innerHTML = '';
+      for (var i = 0; i < 15; i++) {
+        var p = prizes[i];
+        var cell = document.createElement('div');
+        cell.className = 'prize-cell' + (p.isGrand ? ' grand' : '');
+        cell.innerHTML = '<span class="icon">' + p.icon + '</span><span class="name">' + p.name + '</span>';
+        grid.appendChild(cell);
+      }
+    }
+    
+    function createFallingItems() {
+      var c = document.getElementById('fallingItems');
+      var items = ['🧧','💰','🪙','✨'];
+      for (var i = 0; i < 8; i++) {
+        var s = document.createElement('span');
+        s.className = 'falling-item';
+        s.textContent = items[i % 4];
+        s.style.left = Math.random() * 100 + '%';
+        s.style.fontSize = (14 + Math.random() * 10) + 'px';
+        s.style.animationDuration = (8 + Math.random() * 8) + 's';
+        s.style.animationDelay = Math.random() * 8 + 's';
+        c.appendChild(s);
+      }
+    }
+    
+    function toggleMusic() {
+      var btn = document.getElementById('musicBtn');
+      if (musicPlaying) { musicPlaying = false; btn.textContent = '🔇'; }
+      else { musicPlaying = true; btn.textContent = '🔊'; playMusic(); }
+    }
+    
+    function playMusic() {
+      try {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        var melody = [{n:392,d:0.25},{n:440,d:0.25},{n:523,d:0.5},{n:587,d:0.25},{n:523,d:0.25},{n:440,d:0.5},{n:392,d:0.25},{n:330,d:0.25},{n:392,d:0.5}];
+        function play() {
+          if (!musicPlaying) return;
+          var t = ctx.currentTime;
+          melody.forEach(function(m) {
+            if (m.n > 0) {
+              var o = ctx.createOscillator(), g = ctx.createGain();
+              o.connect(g); g.connect(ctx.destination);
+              o.frequency.value = m.n; o.type = 'triangle';
+              g.gain.setValueAtTime(0.15, t);
+              g.gain.exponentialRampToValueAtTime(0.01, t + m.d * 0.9);
+              o.start(t); o.stop(t + m.d);
+            }
+            t += m.d;
+          });
+          setTimeout(play, 2800);
+        }
+        play();
+      } catch(e) {}
+    }
+    
+    function formatPhone(p) { p = p.replace(/[\s\-\(\)\+]/g, ''); if (/^0[1-9]\d{7,9}$/.test(p)) return '60' + p.substring(1); if (/^[89]\d{7}$/.test(p)) return '65' + p; return p; }
+    function validatePhone(p) { var f = formatPhone(p); return /^(60[1-9]\d{8,9}|65[89]\d{7})$/.test(f); }
+    
+    function handleLotteryClick() { if (!isSpinning) document.getElementById('registerModal').classList.add('show'); }
+    function closeRegisterModal() { document.getElementById('registerModal').classList.remove('show'); }
+    function closeResultModal() { document.getElementById('resultModal').classList.remove('show'); }
+    function closeShareModal() { document.getElementById('shareModal').classList.remove('show'); }
+    function closeQueryModal() { document.getElementById('queryModal').classList.remove('show'); }
+    function showShareModal() { document.getElementById('shareInviteCode').textContent = currentUser.inviteCode; document.getElementById('shareModal').classList.add('show'); }
+    function showQueryModal() { document.getElementById('queryModal').classList.add('show'); document.getElementById('queryResult').style.display = 'none'; }
+    
+    function doRegister() {
+      var phone = document.getElementById('inputPhone').value.trim();
+      if (!validatePhone(phone)) { document.getElementById('phoneError').style.display = 'block'; return; }
+      document.getElementById('phoneError').style.display = 'none';
+      var btn = document.getElementById('registerBtn');
+      btn.disabled = true; btn.textContent = '验证中...';
+      google.script.run.withSuccessHandler(function(r) {
+        btn.disabled = false; btn.textContent = '🎰 开始抽奖';
+        if (!r.success) { alert(r.message); return; }
+        currentUser = r.user;
+        closeRegisterModal();
+        if (currentUser.points < 1) showShareModal();
+        else if (currentUser.todayDraws >= 3) alert('今日抽奖次数已用完（3次），明天再来！');
+        else startLottery();
+      }).withFailureHandler(function() { btn.disabled = false; btn.textContent = '🎰 开始抽奖'; alert('网络错误'); }).registerUser(formatPhone(phone), '', '', referrerCode);
+    }
+    
+    function startLottery() {
+      document.getElementById('loadingOverlay').classList.add('show');
+      google.script.run.withSuccessHandler(function(r) {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        if (!r.success) { if (r.inviteCode) { currentUser.inviteCode = r.inviteCode; showShareModal(); } else alert(r.message); return; }
+        currentUser.points = r.newPoints; currentUser.todayDraws = r.todayDraws; currentUser.inviteCode = r.inviteCode;
+        runSpin(r);
+      }).withFailureHandler(function() { document.getElementById('loadingOverlay').classList.remove('show'); alert('网络错误'); }).doLottery(currentUser.phone);
+    }
+    
+    function runSpin(result) {
+      var btn = document.getElementById('bottomBtn');
+      btn.disabled = true; btn.textContent = '抽奖中...'; isSpinning = true;
+      var cells = document.querySelectorAll('.prize-cell');
+      var winIdx = 0;
+      for (var i = 0; i < prizes.length; i++) { if (prizes[i].name === result.prize.name) { winIdx = i; break; } }
+      var order = [0,1,2,3,4,9,14,13,12,11,10,5];
+      var targetPos = order.indexOf(winIdx); if (targetPos < 0) targetPos = 0;
+      var step = 0, total = order.length * 3 + targetPos, speed = 50;
+      function spin() {
+        cells.forEach(function(c) { c.classList.remove('active'); });
+        cells[order[step % order.length]].classList.add('active');
+        step++;
+        if (step > total) {
+          setTimeout(function() {
+            isSpinning = false; btn.disabled = false; btn.textContent = '🎰 点击抽奖';
+            showResult(result);
+          }, 300);
+          return;
+        }
+        if (step > total - 8) speed += 25;
+        setTimeout(spin, speed);
+      }
+      spin();
+    }
+    
+    function showResult(r) {
+      document.getElementById('resultIcon').textContent = r.prize.icon;
+      document.getElementById('resultPrize').textContent = r.prize.name;
+      document.getElementById('resultExpiry').textContent = r.expiryDate;
+      document.getElementById('resultInviteCode').textContent = r.inviteCode;
+      if (r.prize.isGrand) createFireworks();
+      document.getElementById('resultModal').classList.add('show');
+    }
+    
+    function shareToWhatsApp() {
+      var code = currentUser ? currentUser.inviteCode : '';
+      var url = deploymentUrl + '?ref=' + code;
+      var text = '🧧【张崇会火锅 · 百万镇分店】\n\n🐴 马年新春抽奖活动！\n🎁 100%中奖！人人有奖！\n\n我刚抽中大奖，你也来试试运气！\n\n👇 点击链接立即参与：\n' + url;
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    }
+    
+    function doQuery() {
+      var phone = document.getElementById('queryPhone').value.trim();
+      if (!validatePhone(phone)) { alert('请输入有效的手机号码'); return; }
+      google.script.run.withSuccessHandler(function(r) {
+        if (!r.success) { alert('未找到此手机号码的记录'); return; }
+        document.getElementById('queryPoints').textContent = r.user.points;
+        document.getElementById('queryDraws').textContent = r.user.todayDraws + '/3';
+        var list = document.getElementById('queryPrizeList');
+        if (r.prizes && r.prizes.length > 0) {
+          list.innerHTML = r.prizes.map(function(p) {
+            var sc = p.status === '已核销' ? '#4caf50' : (p.status === '已过期' ? '#999' : '#ff9800');
+            var st = p.status === '已核销' ? '✅已领取' : (p.status === '已过期' ? '❌已过期' : '⏳未领取');
+            return '<div style="padding:8px;border-bottom:1px solid #eee;"><div style="display:flex;justify-content:space-between;"><b>' + p.prize + '</b><span style="color:' + sc + ';font-size:11px;">' + st + '</span></div><div style="font-size:10px;color:#666;">验证码: <b style="color:#8b0000;">' + p.code + '</b> | 有效期: ' + p.expiryDate + '</div></div>';
+          }).join('');
+        } else { list.innerHTML = '<p style="color:#999;text-align:center;">暂无奖品</p>'; }
+        document.getElementById('queryResult').style.display = 'block';
+      }).withFailureHandler(function() { alert('查询失败'); }).queryUserPrizes(formatPhone(phone));
+    }
+    
+    function createFireworks() {
+      var c = document.getElementById('fireworksContainer');
+      var colors = ['#ff0000','#ffd700','#ff6600','#ff00ff'];
+      for (var i = 0; i < 5; i++) {
+        setTimeout(function() {
+          var fw = document.createElement('div');
+          fw.style.cssText = 'position:absolute;left:' + (20 + Math.random() * 60) + '%;top:' + (20 + Math.random() * 40) + '%';
+          for (var j = 0; j < 12; j++) {
+            var p = document.createElement('span');
+            var angle = (j / 12) * Math.PI * 2, dist = 40 + Math.random() * 30;
+            p.style.cssText = 'position:absolute;width:6px;height:6px;border-radius:50%;background:' + colors[j % 4] + ';animation:explode 0.8s ease-out forwards;';
+            p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+            p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+            fw.appendChild(p);
+          }
+          c.appendChild(fw);
+          setTimeout(function() { fw.remove(); }, 1000);
+        }, i * 150);
+      }
+    }
+  </script>
+  <style>
+    @keyframes explode { 0% { transform: translate(0,0); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)); opacity: 0; } }
+  </style>
+</body>
+</html>
