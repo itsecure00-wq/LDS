@@ -333,6 +333,17 @@
           bgAudio = new Audio(bgMusicUrl);
           bgAudio.loop = true;
           bgAudio.volume = 0.3;
+          bgAudio.onerror = function() {
+            // Direct URL failed (CORS), try server proxy
+            google.script.run.withSuccessHandler(function(dataUrl) {
+              if (dataUrl && musicPlaying) {
+                bgAudio = new Audio(dataUrl);
+                bgAudio.loop = true;
+                bgAudio.volume = 0.3;
+                bgAudio.play().catch(function() {});
+              } else { playFallbackMusic(); }
+            }).withFailureHandler(function() { playFallbackMusic(); }).proxyAudioUrl(bgMusicUrl);
+          };
           bgAudio.play().catch(function() {});
         } catch(e) { playFallbackMusic(); }
       } else {

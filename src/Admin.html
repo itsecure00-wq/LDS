@@ -875,7 +875,6 @@
       result.innerHTML = '<span style="color:#666;">⏳ 加载中...</span>';
 
       testAudio = new Audio();
-      testAudio.crossOrigin = 'anonymous';
       testAudio.preload = 'auto';
 
       testAudio.oncanplaythrough = function() {
@@ -885,7 +884,30 @@
         });
       };
       testAudio.onerror = function() {
-        result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '加载失败<br><span style="font-size:11px;color:#999;">提示：Google Drive链接需设为「知道链接的人都可查看」<br>也可尝试其他音乐托管服务（如 Pixabay）</span></span>';
+        // Google Drive URL may fail due to CORS - try fetching via server proxy
+        if (url.indexOf('drive.google.com') >= 0) {
+          result.innerHTML = '<span style="color:#666;">⏳ Google Drive链接需通过服务器代理加载...</span>';
+          google.script.run.withSuccessHandler(function(dataUrl) {
+            if (dataUrl) {
+              testAudio = new Audio(dataUrl);
+              testAudio.oncanplaythrough = function() {
+                result.innerHTML = '<span style="color:#2e7d32;">✅ ' + label + '加载成功（服务器代理），正在播放...</span>';
+                testAudio.play().catch(function() {
+                  result.innerHTML = '<span style="color:#e65100;">⚠️ 浏览器阻止自动播放，请先点击页面任意位置再试</span>';
+                });
+              };
+              testAudio.onerror = function() {
+                result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '加载失败<br><span style="font-size:11px;color:#999;">请确认文件已设为「知道链接的人都可查看」<br>或尝试使用其他音乐托管服务</span></span>';
+              };
+            } else {
+              result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '加载失败<br><span style="font-size:11px;color:#999;">请确认Google Drive文件已设为「知道链接的人都可查看」</span></span>';
+            }
+          }).withFailureHandler(function() {
+            result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '服务器代理加载失败</span>';
+          }).proxyAudioUrl(url);
+        } else {
+          result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '加载失败<br><span style="font-size:11px;color:#999;">请检查URL是否有效，或尝试其他音乐托管服务</span></span>';
+        }
       };
       testAudio.src = url;
     }

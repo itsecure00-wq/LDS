@@ -918,3 +918,17 @@ function initializeSystem() {
   
   return '✅ 系统初始化完成！包含15个奖品和3个默认员工账号';
 }
+
+// ============ 音乐代理 ============
+function proxyAudioUrl(url) {
+  try {
+    var response = UrlFetchApp.fetch(url, { followRedirects: true, muteHttpExceptions: true });
+    if (response.getResponseCode() !== 200) return null;
+    var blob = response.getBlob();
+    var contentType = blob.getContentType() || 'audio/mpeg';
+    var b64 = Utilities.base64Encode(blob.getBytes());
+    return 'data:' + contentType + ';base64,' + b64;
+  } catch(e) {
+    return null;
+  }
+}
