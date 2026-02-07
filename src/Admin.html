@@ -731,10 +731,12 @@
     }
     
     // 员工
+    var staffData = [];
     function loadStaff() {
       google.script.run.withSuccessHandler(function(staff) {
+        staffData = staff;
         var list = document.getElementById('staffList');
-        list.innerHTML = staff.map(function(s) {
+        list.innerHTML = staff.map(function(s, idx) {
           return '<div class="list-item" style="flex-wrap:wrap;">' +
             '<div class="main-info">' +
               '<div class="title">' + s.name + ' <small style="color:#999;">@' + s.username + '</small></div>' +
@@ -742,8 +744,8 @@
             '</div>' +
             '<div style="display:flex;align-items:center;gap:8px;">' +
               '<span class="role-badge ' + s.role + '">' + s.role + '</span>' +
-              '<button class="btn btn-sm" style="background:#2196f3;color:#fff;" onclick="editStaff(' + s.row + ',\'' + s.name.replace(/'/g, "\\'") + '\',\'' + s.username.replace(/'/g, "\\'") + '\',\'' + s.role + '\')">✏️</button>' +
-              '<button class="btn btn-sm" style="background:#f44336;color:#fff;" onclick="deleteStaff(' + s.row + ',\'' + s.name.replace(/'/g, "\\'") + '\')">🗑️</button>' +
+              '<button class="btn btn-sm" style="background:#2196f3;color:#fff;" onclick="editStaffByIdx(' + idx + ')">✏️</button>' +
+              '<button class="btn btn-sm" style="background:#f44336;color:#fff;" onclick="deleteStaffByIdx(' + idx + ')">🗑️</button>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -769,12 +771,14 @@
       }).addStaff(name, username, password, role);
     }
 
-    function editStaff(row, name, username, role) {
-      document.getElementById('editStaffRow').value = row;
-      document.getElementById('editStaffName').value = name;
-      document.getElementById('editStaffUsername').value = username;
+    function editStaffByIdx(idx) {
+      var s = staffData[idx];
+      if (!s) return;
+      document.getElementById('editStaffRow').value = s.row;
+      document.getElementById('editStaffName').value = s.name;
+      document.getElementById('editStaffUsername').value = s.username;
       document.getElementById('editStaffPassword').value = '';
-      document.getElementById('editStaffRole').value = role;
+      document.getElementById('editStaffRole').value = s.role;
       document.getElementById('editStaffModal').style.display = 'flex';
     }
 
@@ -795,12 +799,14 @@
       }).updateStaff(row, name, username, password, role);
     }
 
-    function deleteStaff(row, name) {
-      if (!confirm('确定要删除员工「' + name + '」吗？此操作不可恢复。')) return;
+    function deleteStaffByIdx(idx) {
+      var s = staffData[idx];
+      if (!s) return;
+      if (!confirm('确定要删除员工「' + s.name + '」吗？此操作不可恢复。')) return;
       google.script.run.withSuccessHandler(function(r) {
         alert(r.success ? '✅ ' + r.message : '❌ 删除失败');
         if (r.success) loadStaff();
-      }).deleteStaff(row);
+      }).deleteStaff(s.row);
     }
 
     // ==================== 音乐设置 ====================
