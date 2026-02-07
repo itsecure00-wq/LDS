@@ -18,9 +18,9 @@
     .login-error { color: #cc0000; text-align: center; margin-bottom: 12px; font-size: 13px; display: none; }
     
     .admin-page { display: none; }
-    .admin-header { background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; }
-    .admin-header h1 { font-size: 18px; }
-    .admin-header .user-info { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+    .admin-header { background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .admin-header h1 { font-size: 20px; }
+    .admin-header .user-info { display: flex; align-items: center; gap: 12px; font-size: 15px; }
     .role-badge { padding: 5px 12px; border-radius: 10px; font-size: 13px; }
     .role-badge.Boss, .role-badge.Admin { background: #ffd700; color: #8b0000; }
     .role-badge.Manager { background: #4caf50; color: #fff; }
@@ -29,24 +29,24 @@
     
     .stats-container { padding: 15px; background: linear-gradient(135deg, #8b0000, #a00000); }
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-    .stat-card { background: rgba(255,255,255,0.15); padding: 14px; border-radius: 10px; text-align: center; color: #fff; }
-    .stat-card .number { font-size: 26px; font-weight: bold; color: #ffd700; }
-    .stat-card .label { font-size: 12px; opacity: 0.9; }
+    .stat-card { background: rgba(255,255,255,0.15); padding: 16px; border-radius: 10px; text-align: center; color: #fff; }
+    .stat-card .number { font-size: 30px; font-weight: bold; color: #ffd700; }
+    .stat-card .label { font-size: 14px; opacity: 0.9; }
     
     .tabs { display: flex; background: #fff; border-bottom: 1px solid #e0e0e0; overflow-x: auto; }
-    .tab-btn { flex: none; padding: 16px 20px; border: none; background: none; font-size: 15px; cursor: pointer; border-bottom: 3px solid transparent; color: #666; }
+    .tab-btn { flex: none; padding: 18px 22px; border: none; background: none; font-size: 16px; cursor: pointer; border-bottom: 3px solid transparent; color: #666; }
     .tab-btn.active { color: #8b0000; border-bottom-color: #8b0000; font-weight: bold; }
     .tab-btn.hidden { display: none; }
     .tab-content { display: none; padding: 15px; }
     .tab-content.active { display: block; }
     
-    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 15px; }
-    .card h3 { color: #8b0000; margin-bottom: 14px; font-size: 17px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+    .card h3 { color: #8b0000; margin-bottom: 16px; font-size: 19px; padding-bottom: 12px; border-bottom: 2px solid #f0e0e0; }
     
     .verify-section { background: linear-gradient(135deg, #fff9e6, #fff3cc); border: 2px solid #ffd700; border-radius: 12px; padding: 16px; margin-bottom: 15px; }
     .verify-input { display: flex; gap: 10px; }
     .verify-input input { flex: 1; padding: 16px; border: 2px solid #ffd700; border-radius: 10px; font-size: 20px; font-family: monospace; text-transform: uppercase; text-align: center; }
-    .verify-input button { padding: 16px 28px; background: #8b0000; color: #fff; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; cursor: pointer; }
+    .verify-input button { padding: 18px 30px; background: #8b0000; color: #fff; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
     .verify-result { margin-top: 15px; padding: 16px; border-radius: 12px; display: none; }
     .verify-result.success { display: block; background: #e8f5e9; border: 2px solid #4caf50; }
     .verify-result.error { display: block; background: #ffebee; border: 2px solid #f44336; }
@@ -62,38 +62,39 @@
     .verify-btn { margin-top: 14px; padding: 16px; background: #4caf50; color: #fff; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; cursor: pointer; width: 100%; }
     
     .list-filter { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-    .filter-btn { padding: 10px 18px; border: 1px solid #ddd; background: #fff; border-radius: 20px; font-size: 14px; cursor: pointer; }
+    .filter-btn { padding: 12px 20px; border: 1px solid #ddd; background: #fff; border-radius: 20px; font-size: 15px; cursor: pointer; }
     .filter-btn.active { background: #8b0000; color: #fff; border-color: #8b0000; }
     
     .data-list { max-height: 400px; overflow-y: auto; }
-    .list-item { padding: 14px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .list-item { padding: 16px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
     .list-item:hover { background: #fafafa; }
     .list-item .main-info { flex: 1; }
-    .list-item .title { font-weight: bold; color: #333; font-size: 14px; }
-    .list-item .code { font-family: monospace; color: #8b0000; background: #fff0f0; padding: 3px 8px; border-radius: 4px; font-size: 13px; }
-    .list-item .subtitle { font-size: 13px; color: #666; margin-top: 4px; }
-    .list-item .meta { font-size: 12px; color: #999; margin-top: 4px; }
-    .status-badge { padding: 6px 14px; border-radius: 14px; font-size: 13px; font-weight: bold; }
+    .list-item .title { font-weight: bold; color: #333; font-size: 16px; }
+    .list-item .code { font-family: monospace; color: #8b0000; background: #fff0f0; padding: 4px 10px; border-radius: 4px; font-size: 15px; }
+    .list-item .subtitle { font-size: 15px; color: #666; margin-top: 5px; }
+    .list-item .meta { font-size: 13px; color: #999; margin-top: 5px; }
+    .status-badge { padding: 7px 16px; border-radius: 14px; font-size: 14px; font-weight: bold; }
     .status-badge.pending { background: #fff3e0; color: #e65100; }
     .status-badge.verified { background: #e8f5e9; color: #2e7d32; }
     .status-badge.expired { background: #ffebee; color: #c62828; }
     .status-badge.sent { background: #e3f2fd; color: #1565c0; }
     
-    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .data-table th, .data-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #f0f0f0; }
-    .data-table th { background: #fafafa; font-weight: bold; }
-    .data-table input { padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 100%; }
-    .data-table select { padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .data-table th, .data-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #e8e8e8; }
+    .data-table th { background: #f5f0f0; font-weight: bold; color: #8b0000; font-size: 14px; white-space: nowrap; }
+    .data-table input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; width: 100%; }
+    .data-table select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; }
+    .data-table tr:hover { background: #fff8f8; }
     
-    .btn { padding: 12px 22px; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; font-weight: bold; }
+    .btn { padding: 14px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; }
     .btn-primary { background: #8b0000; color: #fff; }
     .btn-success { background: #4caf50; color: #fff; }
-    .btn-sm { padding: 8px 16px; font-size: 13px; }
-    .btn-block { width: 100%; padding: 16px; margin-top: 14px; font-size: 16px; }
+    .btn-sm { padding: 10px 18px; font-size: 14px; }
+    .btn-block { width: 100%; padding: 18px; margin-top: 16px; font-size: 17px; }
     
-    .form-group { margin-bottom: 12px; }
-    .form-group label { display: block; font-size: 14px; color: #666; margin-bottom: 6px; }
-    .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 15px; color: #555; margin-bottom: 6px; font-weight: 500; }
+    .form-group input, .form-group select { width: 100%; padding: 13px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
     .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
     
     .empty-state { text-align: center; padding: 40px; color: #999; }
@@ -248,7 +249,7 @@
         <h3>🎁 奖品配置 (15格)</h3>
         <div style="overflow-x:auto;">
           <table class="data-table" id="prizeTable">
-            <thead><tr><th>#</th><th>图标</th><th>奖品名称</th><th>库存</th><th>已发</th><th>剩余</th><th>权重</th><th>大奖</th><th>状态</th></tr></thead>
+            <thead><tr><th>#</th><th>图标</th><th>奖品名称</th><th>库存</th><th>已发</th><th>剩余</th><th>权重</th><th>几率</th><th>大奖</th><th>状态</th></tr></thead>
             <tbody id="prizeTableBody"></tbody>
           </table>
         </div>
@@ -702,16 +703,27 @@
     // 奖品
     function loadPrizes() {
       google.script.run.withSuccessHandler(function(prizes) {
+        // 计算总权重（仅启用且有库存的）
+        var totalWeight = 0;
+        prizes.forEach(function(p) {
+          if (p.status === '启用' && p.remaining > 0 && p.weight > 0) totalWeight += p.weight;
+        });
+
         var tbody = document.getElementById('prizeTableBody');
         tbody.innerHTML = prizes.map(function(p, i) {
+          var prob = (p.status === '启用' && p.remaining > 0 && p.weight > 0 && totalWeight > 0)
+            ? (p.weight / totalWeight * 100).toFixed(1) + '%'
+            : '-';
+          var probColor = prob === '-' ? '#999' : (parseFloat(prob) >= 20 ? '#2e7d32' : (parseFloat(prob) >= 10 ? '#e65100' : '#8b0000'));
           return '<tr data-row="' + p.row + '">' +
-            '<td>' + (i + 1) + '</td>' +
-            '<td><input type="text" class="p-icon" value="' + p.icon + '" style="width:40px;text-align:center;"></td>' +
-            '<td><input type="text" class="p-name" value="' + p.name + '" style="width:80px;"></td>' +
-            '<td><input type="number" class="p-stock" value="' + p.totalStock + '" style="width:50px;"></td>' +
-            '<td>' + p.usedStock + '</td>' +
-            '<td style="color:' + (p.remaining <= 5 ? 'red' : 'green') + ';font-weight:bold;">' + p.remaining + '</td>' +
-            '<td><input type="number" class="p-weight" value="' + p.weight + '" style="width:50px;"></td>' +
+            '<td style="font-weight:bold;color:#8b0000;">' + (i + 1) + '</td>' +
+            '<td><input type="text" class="p-icon" value="' + p.icon + '" style="width:50px;text-align:center;font-size:18px;"></td>' +
+            '<td><input type="text" class="p-name" value="' + p.name + '" style="min-width:140px;"></td>' +
+            '<td><input type="number" class="p-stock" value="' + p.totalStock + '" style="width:65px;"></td>' +
+            '<td style="text-align:center;">' + p.usedStock + '</td>' +
+            '<td style="color:' + (p.remaining <= 5 ? 'red' : 'green') + ';font-weight:bold;text-align:center;font-size:16px;">' + p.remaining + '</td>' +
+            '<td><input type="number" class="p-weight" value="' + p.weight + '" style="width:65px;"></td>' +
+            '<td style="color:' + probColor + ';font-weight:bold;text-align:center;font-size:14px;">' + prob + '</td>' +
             '<td><select class="p-grand"><option value="0"' + (!p.isGrand ? ' selected' : '') + '>否</option><option value="1"' + (p.isGrand ? ' selected' : '') + '>是</option></select></td>' +
             '<td><select class="p-status"><option' + (p.status === '启用' ? ' selected' : '') + '>启用</option><option' + (p.status === '停用' ? ' selected' : '') + '>停用</option></select></td>' +
           '</tr>';

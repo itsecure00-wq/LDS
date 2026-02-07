@@ -4,7 +4,7 @@
  * 功能：15格抽奖、积分30天过期、防重复邀请、权限分级
  */
 
-var APP_VERSION = 'v42';
+var APP_VERSION = 'v43';
 
 // ============ Web App 入口 ============
 function doGet(e) {
