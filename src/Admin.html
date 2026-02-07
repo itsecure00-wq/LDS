@@ -830,53 +830,54 @@
       }).saveMusicSettings(bgUrl, fcUrl, enabled);
     }
     
+    function convertDriveUrl(url) {
+      var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match) return 'https://drive.google.com/uc?export=download&id=' + match[1];
+      if (url.indexOf('drive.google.com') >= 0 && url.indexOf('id=') >= 0) {
+        var idMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
+        if (idMatch) return 'https://drive.google.com/uc?export=download&id=' + idMatch[1];
+      }
+      return url;
+    }
+
+    function testPlayAudio(url, label) {
+      var result = document.getElementById('musicTestResult');
+      if (!url) {
+        result.innerHTML = '<span style="color:#e65100;">⚠️ 请先输入' + label + 'URL</span>';
+        return;
+      }
+      stopTestMusic();
+      url = convertDriveUrl(url);
+      result.innerHTML = '<span style="color:#666;">⏳ 加载中...</span>';
+
+      testAudio = new Audio();
+      testAudio.crossOrigin = 'anonymous';
+      testAudio.preload = 'auto';
+
+      testAudio.oncanplaythrough = function() {
+        result.innerHTML = '<span style="color:#2e7d32;">✅ ' + label + '加载成功，正在播放...</span>';
+        testAudio.play().catch(function() {
+          result.innerHTML = '<span style="color:#e65100;">⚠️ 浏览器阻止自动播放，请先点击页面任意位置再试</span>';
+        });
+      };
+      testAudio.onerror = function() {
+        result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '加载失败<br><span style="font-size:11px;color:#999;">提示：Google Drive链接需设为「知道链接的人都可查看」<br>也可尝试其他音乐托管服务（如 Pixabay）</span></span>';
+      };
+      testAudio.src = url;
+    }
+
     function testBgMusic() {
-      var url = document.getElementById('bgMusicUrl').value.trim();
-      var result = document.getElementById('musicTestResult');
-      
-      if (!url) {
-        result.innerHTML = '<span style="color:#e65100;">⚠️ 请先输入背景音乐URL</span>';
-        return;
-      }
-      
-      stopTestMusic();
-      result.innerHTML = '<span style="color:#666;">⏳ 加载中...</span>';
-      
-      testAudio = new Audio(url);
-      testAudio.oncanplay = function() {
-        result.innerHTML = '<span style="color:#2e7d32;">✅ 音乐加载成功，正在播放...</span>';
-        testAudio.play();
-      };
-      testAudio.onerror = function() {
-        result.innerHTML = '<span style="color:#c62828;">❌ 音乐加载失败，请检查URL是否正确</span>';
-      };
+      testPlayAudio(document.getElementById('bgMusicUrl').value.trim(), '背景音乐');
     }
-    
+
     function testFirecracker() {
-      var url = document.getElementById('firecrackerUrl').value.trim();
-      var result = document.getElementById('musicTestResult');
-      
-      if (!url) {
-        result.innerHTML = '<span style="color:#e65100;">⚠️ 请先输入鞭炮音效URL</span>';
-        return;
-      }
-      
-      stopTestMusic();
-      result.innerHTML = '<span style="color:#666;">⏳ 加载中...</span>';
-      
-      testAudio = new Audio(url);
-      testAudio.oncanplay = function() {
-        result.innerHTML = '<span style="color:#2e7d32;">✅ 音效加载成功，正在播放...</span>';
-        testAudio.play();
-      };
-      testAudio.onerror = function() {
-        result.innerHTML = '<span style="color:#c62828;">❌ 音效加载失败，请检查URL是否正确</span>';
-      };
+      testPlayAudio(document.getElementById('firecrackerUrl').value.trim(), '鞭炮音效');
     }
-    
+
     function stopTestMusic() {
       if (testAudio) {
         testAudio.pause();
+        testAudio.src = '';
         testAudio = null;
       }
       document.getElementById('musicTestResult').innerHTML = '';

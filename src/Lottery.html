@@ -273,13 +273,18 @@
     ];
     
     var currentUser = null, isSpinning = false, referrerCode = '', deploymentUrl = '', musicPlaying = false;
-    
+    var bgMusicUrl = '', firecrackerUrl = '', bgAudio = null;
+
     window.onload = function() {
       referrerCode = new URLSearchParams(window.location.search).get('ref') || '';
       renderGrid();
       createFallingItems();
       google.script.run.withSuccessHandler(function(url) { deploymentUrl = url; }).getDeploymentUrl();
-      google.script.run.withSuccessHandler(function(s) { if (!s.musicEnabled) document.getElementById('musicBtn').style.display = 'none'; }).getMusicSettings();
+      google.script.run.withSuccessHandler(function(s) {
+        if (!s.musicEnabled) document.getElementById('musicBtn').style.display = 'none';
+        bgMusicUrl = s.bgMusicUrl || '';
+        firecrackerUrl = s.firecrackerUrl || '';
+      }).getMusicSettings();
     };
     
     function renderGrid() {
@@ -311,11 +316,31 @@
     
     function toggleMusic() {
       var btn = document.getElementById('musicBtn');
-      if (musicPlaying) { musicPlaying = false; btn.textContent = '🔇'; }
-      else { musicPlaying = true; btn.textContent = '🔊'; playMusic(); }
+      if (musicPlaying) {
+        musicPlaying = false;
+        btn.textContent = '🔇';
+        if (bgAudio) { bgAudio.pause(); }
+      } else {
+        musicPlaying = true;
+        btn.textContent = '🔊';
+        playMusic();
+      }
     }
-    
+
     function playMusic() {
+      if (bgMusicUrl) {
+        try {
+          bgAudio = new Audio(bgMusicUrl);
+          bgAudio.loop = true;
+          bgAudio.volume = 0.3;
+          bgAudio.play().catch(function() {});
+        } catch(e) { playFallbackMusic(); }
+      } else {
+        playFallbackMusic();
+      }
+    }
+
+    function playFallbackMusic() {
       try {
         var ctx = new (window.AudioContext || window.webkitAudioContext)();
         var melody = [{n:392,d:0.25},{n:440,d:0.25},{n:523,d:0.5},{n:587,d:0.25},{n:523,d:0.25},{n:440,d:0.5},{n:392,d:0.25},{n:330,d:0.25},{n:392,d:0.5}];
@@ -337,6 +362,12 @@
         }
         play();
       } catch(e) {}
+    }
+
+    function playFirecracker() {
+      if (firecrackerUrl) {
+        try { var a = new Audio(firecrackerUrl); a.volume = 0.5; a.play().catch(function(){}); } catch(e) {}
+      }
     }
     
     function formatPhone(p) { p = p.replace(/[\s\-\(\)\+]/g, ''); if (/^0[1-9]\d{7,9}$/.test(p)) return '60' + p.substring(1); if (/^[89]\d{7}$/.test(p)) return '65' + p; return p; }
@@ -427,7 +458,7 @@
         qrSection.style.display = 'none';
       }
 
-      if (r.prize.isGrand) createFireworks();
+      if (r.prize.isGrand) { createFireworks(); playFirecracker(); }
       document.getElementById('resultModal').classList.add('show');
     }
     
