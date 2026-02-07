@@ -583,7 +583,8 @@ function sendWhatsAppByCode(code, staffName, staffRole) {
       
       addLog(staffName || 'System', staffRole || '', 'WhatsApp发送', '发送: ' + code + ' -> ' + phone);
       
-      var msg = '【张崇会火锅】恭喜您中奖！🎉\n\n🎁 奖品：' + prize + '\n🔑 验证码：' + code + '\n📅 有效期至：' + expiry + '\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n请到店出示验证码兑换！';
+      var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(code);
+      var msg = '【张崇会火锅】恭喜您中奖！🎉\n\n🎁 奖品：' + prize + '\n🔑 验证码：' + code + '\n📅 有效期至：' + expiry + '\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n' + qrUrl + '\n\n请到店出示此二维码给店员扫描兑换！';
       var waLink = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
       
       return { success: true, message: '已标记发送', phone: phone, waLink: waLink };

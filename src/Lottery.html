@@ -450,14 +450,8 @@
           list.innerHTML = r.prizes.map(function(p) {
             var sc = p.status === '已核销' ? '#4caf50' : (p.status === '已过期' ? '#999' : '#ff9800');
             var st = p.status === '已核销' ? '✅已领取' : (p.status === '已过期' ? '❌已过期' : '⏳未领取');
-            return '<div style="padding:8px;border-bottom:1px solid #eee;"><div style="display:flex;justify-content:space-between;"><b>' + p.prize + '</b><span style="color:' + sc + ';font-size:11px;">' + st + '</span></div><div style="font-size:10px;color:#666;">验证码: <b style="color:#8b0000;">' + p.code + '</b> | 有效期: ' + p.expiryDate + '</div>' + (p.status === '待核销' ? '<div id="qr_' + p.code + '" style="text-align:center;margin-top:6px;"></div>' : '') + '</div>';
+            return '<div style="padding:8px;border-bottom:1px solid #eee;"><div style="display:flex;justify-content:space-between;"><b>' + p.prize + '</b><span style="color:' + sc + ';font-size:11px;">' + st + '</span></div><div style="font-size:10px;color:#666;">有效期: ' + p.expiryDate + '</div></div>';
           }).join('');
-          r.prizes.forEach(function(p) {
-            if (p.status === '待核销') {
-              var el = document.getElementById('qr_' + p.code);
-              if (el) new QRCode(el, { text: p.code, width: 120, height: 120, correctLevel: QRCode.CorrectLevel.H });
-            }
-          });
         } else { list.innerHTML = '<p style="color:#999;text-align:center;">暂无奖品</p>'; }
         document.getElementById('queryResult').style.display = 'block';
       }).withFailureHandler(function() { alert('查询失败'); }).queryUserPrizes(formatPhone(phone));
