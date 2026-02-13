@@ -4,7 +4,8 @@
  * 功能：15格抽奖、积分30天过期、防重复邀请、权限分级
  */
 
-var APP_VERSION = 'v50';
+var APP_VERSION = 'v51';
+var POINTS_EXPIRY_DAYS = 90;
 
 // ============ Web App 入口 ============
 function doGet(e) {
@@ -38,7 +39,8 @@ var SH = {
   RECORDS: '中奖记录',
   INVITES: '邀请记录',
   STAFF: '员工账号',
-  LOGS: '操作日志'
+  LOGS: '操作日志',
+  POINTS: '积分明细'
 };
 
 // ============ 工具函数 ============
@@ -59,7 +61,8 @@ function initHeaders(sh, n) {
     '中奖记录': ['记录ID','时间','用户ID','手机','姓名','奖品','验证码','有效期','WA状态','WA时间','核销状态','核销时间','核销员','备注'],
     '邀请记录': ['邀请ID','时间','邀请人手机','邀请人姓名','被邀请人手机','被邀请人姓名','获得积分','状态'],
     '员工账号': ['员工ID','姓名','账号','密码','角色','状态','创建时间','最后登录'],
-    '操作日志': ['日志ID','时间','操作员','角色','动作','详情']
+    '操作日志': ['日志ID','时间','操作员','角色','动作','详情'],
+    '积分明细': ['明细ID','用户手机','获得时间','过期时间','原始积分','剩余积分','来源']
   };
   if (h[n]) {
     sh.appendRow(h[n]);
@@ -185,19 +188,22 @@ function registerUser(phone, name, email, refCode) {
       // 检查是否已经被邀请过（防止重复）
       if (!hasBeenInvited(p)) {
         referrerPhone = referrer.phone;
-        addPointsToUser(referrer.phone, 1);
+        addPointsToUser(referrer.phone, 1, '邀请奖励');
         incrementInviteCount(referrer.phone);
         recordInvite(referrer.phone, referrer.name, p, name || '');
         addLog('System', '', '邀请成功', referrer.phone + ' 邀请 ' + p);
       }
     }
   }
-  
+
   sh.appendRow([
     uid, p, name || '', email || '', now,
-    1, pointsExpiry, 1, inviteCode, referrerPhone,
+    0, '', 1, inviteCode, referrerPhone,
     0, 0, 0, '', '正常'
   ]);
+
+  // 注册奖励写入积分明细表
+  addPointsToUser(p, 1, '注册奖励');
   
   addLog('System', '', '用户注册', '新用户: ' + p);
   
@@ -218,26 +224,68 @@ function registerUser(phone, name, email, refCode) {
 }
 
 function getUserFromRow(row, rowNum, sh, cachedRecords) {
-  var now = new Date();
-  var points = row[5] || 0;
-  var expiry = row[6] ? new Date(row[6]) : null;
-
-  // 检查积分是否过期
-  if (expiry && now > expiry && points > 0) {
-    sh.getRange(rowNum, 6).setValue(0); // 清零积分
-    points = 0;
-    addLog('System', '', '积分过期', row[1] + ' 积分已过期清零');
-  }
+  var phone = String(row[1]);
+  var points = getActivePoints(phone);
 
   return {
     odoo: row[0],
-    phone: String(row[1]),
+    phone: phone,
     name: row[2],
     points: points,
     inviteCode: row[8],
     inviteCount: row[10] || 0,
-    todayDraws: getTodayDrawCount(String(row[1]), cachedRecords)
+    todayDraws: getTodayDrawCount(phone, cachedRecords)
   };
+}
+
+// 计算用户有效积分 (未过期的剩余积分之和)
+function getActivePoints(phone) {
+  var psh = getSheet(SH.POINTS);
+  var d = psh.getDataRange().getValues();
+  var now = new Date();
+  var total = 0;
+  for (var i = 1; i < d.length; i++) {
+    if (String(d[i][1]) !== String(phone)) continue;
+    var expiry = d[i][3] ? new Date(d[i][3]) : null;
+    var remaining = d[i][5] || 0;
+    if (remaining > 0 && expiry && now <= expiry) {
+      total += remaining;
+    }
+  }
+  return total;
+}
+
+// 获取用户积分明细 (供查询页面使用)
+function getPointsDetail(phone) {
+  var psh = getSheet(SH.POINTS);
+  var d = psh.getDataRange().getValues();
+  var now = new Date();
+  var tz = 'Asia/Kuala_Lumpur';
+  var details = [];
+  var activeTotal = 0;
+  var expiredTotal = 0;
+  for (var i = 1; i < d.length; i++) {
+    if (String(d[i][1]) !== String(phone)) continue;
+    var expiry = d[i][3] ? new Date(d[i][3]) : null;
+    var remaining = d[i][5] || 0;
+    var original = d[i][4] || 0;
+    var isExpired = expiry && now > expiry;
+    if (isExpired) {
+      expiredTotal += remaining;
+    } else {
+      activeTotal += remaining;
+    }
+    details.push({
+      date: d[i][2] ? Utilities.formatDate(new Date(d[i][2]), tz, 'yyyy-MM-dd') : '',
+      expiry: expiry ? Utilities.formatDate(expiry, tz, 'yyyy-MM-dd') : '',
+      original: original,
+      remaining: isExpired ? 0 : remaining,
+      source: d[i][6] || '',
+      expired: isExpired
+    });
+  }
+  details.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+  return { details: details, activeTotal: activeTotal, expiredTotal: expiredTotal };
 }
 
 function generateCode() {
@@ -265,36 +313,52 @@ function hasBeenInvited(phone) {
   return false;
 }
 
-function addPointsToUser(phone, pts) {
-  var sh = getSheet(SH.USERS);
-  var d = sh.getDataRange().getValues();
+function addPointsToUser(phone, pts, source) {
+  var psh = getSheet(SH.POINTS);
   var now = new Date();
-  var newExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-  
-  for (var i = 1; i < d.length; i++) {
-    if (String(d[i][1]) === String(phone)) {
-      var current = d[i][5] || 0;
-      sh.getRange(i + 1, 6).setValue(current + pts);
-      sh.getRange(i + 1, 7).setValue(newExpiry); // 刷新过期时间
-      sh.getRange(i + 1, 8).setValue((d[i][7] || 0) + pts);
-      return;
+  var expiry = new Date(now.getTime() + POINTS_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+  var id = 'PT' + Utilities.getUuid().substring(0, 8);
+  psh.appendRow([id, String(phone), now, expiry, pts, pts, source || '系统']);
+  // 同步更新用户表的总积分(累计)
+  var ush = getSheet(SH.USERS);
+  var ud = ush.getDataRange().getValues();
+  for (var i = 1; i < ud.length; i++) {
+    if (String(ud[i][1]) === String(phone)) {
+      ush.getRange(i + 1, 8).setValue((ud[i][7] || 0) + pts);
+      break;
     }
   }
 }
 
 function deductPoints(phone) {
-  var sh = getSheet(SH.USERS);
-  var d = sh.getDataRange().getValues();
-  
+  var psh = getSheet(SH.POINTS);
+  var d = psh.getDataRange().getValues();
+  var now = new Date();
+  var toDeduct = 1;
+
+  // 收集该用户有效的积分行 (未过期且剩余>0), 按过期时间排序 (FIFO先扣最早到期的)
+  var rows = [];
   for (var i = 1; i < d.length; i++) {
-    if (String(d[i][1]) === String(phone)) {
-      var current = d[i][5] || 0;
-      if (current < 1) return false;
-      sh.getRange(i + 1, 6).setValue(current - 1);
-      return true;
+    if (String(d[i][1]) !== String(phone)) continue;
+    var expiry = d[i][3] ? new Date(d[i][3]) : null;
+    var remaining = d[i][5] || 0;
+    if (remaining > 0 && expiry && now <= expiry) {
+      rows.push({ idx: i + 1, expiry: expiry.getTime(), remaining: remaining });
     }
   }
-  return false;
+  rows.sort(function(a, b) { return a.expiry - b.expiry; });
+
+  var total = 0;
+  for (var j = 0; j < rows.length; j++) total += rows[j].remaining;
+  if (total < toDeduct) return false;
+
+  // FIFO 扣减
+  for (var k = 0; k < rows.length && toDeduct > 0; k++) {
+    var take = Math.min(rows[k].remaining, toDeduct);
+    psh.getRange(rows[k].idx, 6).setValue(rows[k].remaining - take);
+    toDeduct -= take;
+  }
+  return true;
 }
 
 function incrementInviteCount(phone) {
@@ -380,10 +444,16 @@ function queryUserPrizes(phone) {
     return new Date(b.drawTime) - new Date(a.drawTime);
   });
   
+  // 积分明细
+  var pointsInfo = getPointsDetail(p);
+
   return {
     success: true,
     user: userInfo.user,
-    prizes: prizes
+    prizes: prizes,
+    pointsDetail: pointsInfo.details,
+    activePoints: pointsInfo.activeTotal,
+    expiredPoints: pointsInfo.expiredTotal
   };
 }
 
@@ -465,7 +535,7 @@ function doLottery(phone) {
       }
 
       if (available.length === 0) {
-        addPointsToUser(p, 1); // 锁内退还
+        addPointsToUser(p, 1, '抽奖退还'); // 锁内退还
         lock.releaseLock();
         return { success: false, message: '奖品已抽完' };
       }
@@ -497,14 +567,14 @@ function doLottery(phone) {
 
     // 重试耗尽仍未选到奖品
     if (!selected) {
-      addPointsToUser(p, 1); // 锁内退还
+      addPointsToUser(p, 1, '抽奖退还'); // 锁内退还
       lock.releaseLock();
       return { success: false, message: '奖品库存不足，请稍后重试' };
     }
 
     lock.releaseLock();
   } catch(e) {
-    try { addPointsToUser(p, 1); } catch(ignored2) {}
+    try { addPointsToUser(p, 1, '抽奖退还'); } catch(ignored2) {}
     try { lock.releaseLock(); } catch(ignored) {}
     return { success: false, message: '系统错误，请重试' };
   }
@@ -1029,6 +1099,55 @@ function buildWAMessage(type, prize, code, expiry) {
   return tpl.replace(/\{prize\}/g, prize).replace(/\{code\}/g, code).replace(/\{expiry\}/g, expiry).replace(/\{qrUrl\}/g, qrUrl);
 }
 
+// ============ 手动加积分 ============
+function addPointsManual(phone, pts, sessionToken) {
+  var session = validateSession(sessionToken);
+  if (!session) return { success: false, message: '会话已过期，请重新登录' };
+  // Manager+ 可以加积分
+  if (session.role === 'Staff') return { success: false, message: '无权限操作' };
+
+  var v = validatePhone(phone);
+  if (!v.valid) return { success: false, message: '手机号格式错误' };
+
+  // 确认用户存在
+  var ush = getSheet(SH.USERS);
+  var ud = ush.getDataRange().getValues();
+  var found = false;
+  for (var i = 1; i < ud.length; i++) {
+    if (String(ud[i][1]) === v.phone) { found = true; break; }
+  }
+  if (!found) return { success: false, message: '用户不存在: ' + v.phone };
+
+  pts = Math.floor(Number(pts));
+  if (pts < 1 || pts > 100) return { success: false, message: '积分数量须为1-100' };
+
+  addPointsToUser(v.phone, pts, '管理员添加');
+  addLog(session.name, session.role, '手动加积分', v.phone + ' +' + pts + '分');
+  return { success: true, message: '成功添加 ' + pts + ' 积分给 ' + v.phone };
+}
+
+function addPointsToAll(pts, sessionToken) {
+  var session = validateSession(sessionToken);
+  if (!session) return { success: false, message: '会话已过期，请重新登录' };
+  // 只有 Boss/Admin 可以全员加积分
+  if (session.role !== 'Boss' && session.role !== 'Admin') return { success: false, message: '无权限操作' };
+
+  pts = Math.floor(Number(pts));
+  if (pts < 1 || pts > 10) return { success: false, message: '全员加积分数量须为1-10' };
+
+  var ush = getSheet(SH.USERS);
+  var ud = ush.getDataRange().getValues();
+  var count = 0;
+  for (var i = 1; i < ud.length; i++) {
+    if (ud[i][14] === '正常') {
+      addPointsToUser(String(ud[i][1]), pts, '全员派发');
+      count++;
+    }
+  }
+  addLog(session.name, session.role, '全员加积分', '全员+' + pts + '分, 共' + count + '人');
+  return { success: true, message: '成功给 ' + count + ' 位用户各添加 ' + pts + ' 积分' };
+}
+
 // ============ 到期提醒 ============
 function sendExpiryReminders() {
   var sh = getSheet(SH.RECORDS);
@@ -1344,6 +1463,35 @@ function cleanTestData() {
   }
 
   return '✅ 测试数据已清理（删除' + rowsToDelete.length + '个测试用户，' + recRowsToDelete.length + '条抽奖记录，库存已重算）';
+}
+
+// ============ 积分数据迁移 (旧→新) ============
+// 在 Apps Script 编辑器手动运行一次: 将用户表的旧积分迁移到积分明细表
+function migratePointsToDetail() {
+  var ush = getSheet(SH.USERS);
+  var ud = ush.getDataRange().getValues();
+  var psh = getSheet(SH.POINTS);
+  var now = new Date();
+  var count = 0;
+
+  for (var i = 1; i < ud.length; i++) {
+    var phone = String(ud[i][1]);
+    var points = ud[i][5] || 0;
+    var expiry = ud[i][6] ? new Date(ud[i][6]) : null;
+
+    if (points > 0) {
+      // 用旧的过期时间; 如果没有, 按90天算
+      var useExpiry = expiry || new Date(now.getTime() + POINTS_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+      var regTime = ud[i][4] ? new Date(ud[i][4]) : now;
+      var id = 'PT' + Utilities.getUuid().substring(0, 8);
+      psh.appendRow([id, phone, regTime, useExpiry, points, points, '迁移']);
+      count++;
+    }
+    // 清除用户表旧积分字段 (置0, 保留列兼容)
+    ush.getRange(i + 1, 6).setValue(0);
+    ush.getRange(i + 1, 7).setValue('');
+  }
+  return '✅ 迁移完成: ' + count + ' 条积分记录已转入积分明细表';
 }
 
 // ============ 数据备份 ============

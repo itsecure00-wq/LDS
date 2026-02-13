@@ -197,6 +197,26 @@
         </div>
         <div id="queryResult"></div>
       </div>
+
+      <!-- 积分 -->
+      <div class="panel" id="panel-points">
+        <div class="card">
+          <h3>💰 指定用户加积分</h3>
+          <input type="tel" id="mPtPhone" placeholder="手机号" style="width:100%;padding:14px;border:2px solid #ddd;border-radius:10px;font-size:16px;margin-bottom:8px;outline:none;">
+          <div style="display:flex;gap:8px;">
+            <input type="number" id="mPtAmount" value="1" min="1" max="100" style="flex:1;padding:14px;border:2px solid #ddd;border-radius:10px;font-size:16px;outline:none;">
+            <button class="action-btn success" onclick="mDoAddPoints()" style="flex:2;">➕ 加积分</button>
+          </div>
+        </div>
+        <div class="card" id="mPtAllCard">
+          <h3>🎉 全员加积分</h3>
+          <div style="display:flex;gap:8px;">
+            <input type="number" id="mPtAllAmount" value="1" min="1" max="10" style="flex:1;padding:14px;border:2px solid #ddd;border-radius:10px;font-size:16px;outline:none;">
+            <button class="action-btn wa" onclick="mDoAddPointsAll()" style="flex:2;background:#ff9800;">🎁 全员派发</button>
+          </div>
+        </div>
+        <div id="mPtResult"></div>
+      </div>
     </div>
 
     <!-- 底部导航 -->
@@ -212,6 +232,10 @@
       <button class="nav-item" data-panel="query" onclick="switchTab('query')">
         <span class="nav-icon">🔍</span>
         <span class="nav-label">查询</span>
+      </button>
+      <button class="nav-item" data-panel="points" onclick="switchTab('points')">
+        <span class="nav-icon">💰</span>
+        <span class="nav-label">积分</span>
       </button>
     </nav>
   </div>
@@ -313,12 +337,21 @@
     var role = currentStaff.role;
     var waNav = document.querySelector('.nav-item[data-panel="whatsapp"]');
     var queryNav = document.querySelector('.nav-item[data-panel="query"]');
+    var pointsNav = document.querySelector('.nav-item[data-panel="points"]');
     if (role === 'Staff') {
       waNav.style.display = 'none';
       queryNav.style.display = '';
+      pointsNav.style.display = 'none';
+    } else if (role === 'Manager') {
+      waNav.style.display = '';
+      queryNav.style.display = '';
+      pointsNav.style.display = '';
+      // Manager 隐藏全员加积分
+      document.getElementById('mPtAllCard').style.display = 'none';
     } else {
       waNav.style.display = '';
       queryNav.style.display = '';
+      pointsNav.style.display = '';
     }
 
     switchTab('verify');
@@ -508,30 +541,116 @@
 
     // 用户卡片
     html += '<div class="user-card">';
-    html += '<div class="user-name">' + esc(u.name || '\u672A\u547D\u540D') + '</div>';
+    html += '<div class="user-name">' + esc(u.name || '未命名') + '</div>';
     html += '<div class="user-phone">' + esc(u.phone) + '</div>';
     html += '<div class="user-stats">';
-    html += '<div class="user-stat"><div class="stat-num">' + (u.points || 0) + '</div><div class="stat-label">\u79EF\u5206</div></div>';
-    html += '<div class="user-stat"><div class="stat-num">' + (u.todayDraws || 0) + '/3</div><div class="stat-label">\u4ECA\u65E5\u62BD\u5956</div></div>';
-    html += '<div class="user-stat"><div class="stat-num">' + (r.prizes ? r.prizes.length : 0) + '</div><div class="stat-label">\u5956\u54C1\u6570</div></div>';
+    html += '<div class="user-stat"><div class="stat-num">' + (r.activePoints || u.points || 0) + '</div><div class="stat-label">有效积分</div></div>';
+    html += '<div class="user-stat"><div class="stat-num">' + (u.todayDraws || 0) + '/3</div><div class="stat-label">今日抽奖</div></div>';
+    html += '<div class="user-stat"><div class="stat-num">' + (r.prizes ? r.prizes.length : 0) + '</div><div class="stat-label">奖品数</div></div>';
     html += '</div></div>';
 
-    // 奖品列表
-    if (r.prizes && r.prizes.length > 0) {
-      for (var i = 0; i < r.prizes.length; i++) {
-        var p = r.prizes[i];
-        var sc = p.status === '\u5DF2\u6838\u9500' ? 'verified' : (p.status === '\u5DF2\u8FC7\u671F' ? 'expired' : 'pending');
-        var st = p.status === '\u5DF2\u6838\u9500' ? '\u2705\u5DF2\u9886\u53D6' : (p.status === '\u5DF2\u8FC7\u671F' ? '\u274C\u5DF2\u8FC7\u671F' : '\u23F3\u672A\u9886\u53D6');
-        html += '<div class="prize-item">';
-        html += '<div class="prize-header"><span class="prize-name">' + esc(p.prize) + '</span><span class="status ' + sc + '">' + st + '</span></div>';
-        html += '<div class="prize-detail">\u9A8C\u8BC1\u7801: ' + esc(p.code) + ' | \u6709\u6548\u671F: ' + esc(p.expiryDate) + '</div>';
+    // 积分明细
+    if (r.pointsDetail && r.pointsDetail.length > 0) {
+      html += '<div class="card"><h3>💰 积分明细</h3>';
+      for (var d = 0; d < r.pointsDetail.length; d++) {
+        var pt = r.pointsDetail[d];
+        var expStyle = pt.expired ? 'opacity:0.4;text-decoration:line-through;' : '';
+        html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;' + expStyle + '">';
+        html += '<div>' + esc(pt.date) + ' <span style="color:#999;">' + esc(pt.source) + '</span></div>';
+        html += '<div><b>' + pt.remaining + '</b>/' + pt.original + ' <span style="font-size:11px;color:#999;">到期' + esc(pt.expiry) + '</span></div>';
         html += '</div>';
       }
+      html += '</div>';
+    }
+
+    // 奖品列表 (含重发WA按钮)
+    if (r.prizes && r.prizes.length > 0) {
+      html += '<div class="card"><h3>🎫 验证码 / 奖品</h3>';
+      for (var i = 0; i < r.prizes.length; i++) {
+        var p = r.prizes[i];
+        var sc = p.status === '已核销' ? 'verified' : (p.status === '已过期' ? 'expired' : 'pending');
+        var st = p.status === '已核销' ? '✅已领取' : (p.status === '已过期' ? '❌已过期' : '⏳未领取');
+        html += '<div class="prize-item">';
+        html += '<div class="prize-header"><span class="prize-name">' + esc(p.prize) + '</span><span class="status ' + sc + '">' + st + '</span></div>';
+        html += '<div class="prize-detail">验证码: ' + esc(p.code) + ' | 有效期: ' + esc(p.expiryDate) + '</div>';
+        if (p.status === '未核销' && currentStaff && currentStaff.role !== 'Staff') {
+          html += '<button onclick="queryResendWA(\'' + esc(p.code) + '\')" style="margin-top:6px;padding:8px 16px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;width:100%;">📤 发送 / 重发 WhatsApp</button>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
     } else {
-      html += '<div class="empty-state">\u6682\u65E0\u5956\u54C1\u8BB0\u5F55</div>';
+      html += '<div class="empty-state">暂无奖品记录</div>';
     }
 
     div.innerHTML = html;
+  }
+
+  function queryResendWA(code) {
+    showLoading();
+    google.script.run.withSuccessHandler(function(res) {
+      hideLoading();
+      if (checkSession(res)) return;
+      if (res.success) {
+        window.open(res.waLink, '_blank');
+        showToast('已打开WhatsApp', 'success');
+      } else {
+        showToast(res.message, 'error');
+      }
+    }).withFailureHandler(function() {
+      hideLoading();
+      showToast('发送失败', 'error');
+    }).sendWhatsAppByCode(code, sessionToken);
+  }
+
+  // ===== 积分管理 =====
+  function mDoAddPoints() {
+    var phone = document.getElementById('mPtPhone').value.trim();
+    var pts = document.getElementById('mPtAmount').value;
+    if (!phone) { showToast('请输入手机号', 'error'); return; }
+    if (!pts || pts < 1) { showToast('请输入有效积分数', 'error'); return; }
+
+    showLoading();
+    google.script.run.withSuccessHandler(function(r) {
+      hideLoading();
+      if (checkSession(r)) return;
+      var div = document.getElementById('mPtResult');
+      if (r.success) {
+        showToast(r.message, 'success');
+        div.innerHTML = '<div class="card" style="text-align:center;color:#4caf50;font-weight:bold;">' + esc(r.message) + '</div>';
+        document.getElementById('mPtPhone').value = '';
+        document.getElementById('mPtAmount').value = '1';
+      } else {
+        showToast(r.message, 'error');
+        div.innerHTML = '<div class="card" style="text-align:center;color:#f44336;">' + esc(r.message) + '</div>';
+      }
+    }).withFailureHandler(function() {
+      hideLoading();
+      showToast('操作失败', 'error');
+    }).addPointsManual(phone, pts, sessionToken);
+  }
+
+  function mDoAddPointsAll() {
+    var pts = document.getElementById('mPtAllAmount').value;
+    if (!pts || pts < 1) { showToast('请输入有效积分数', 'error'); return; }
+    if (!confirm('确定给所有会员各加 ' + pts + ' 积分？')) return;
+
+    showLoading();
+    google.script.run.withSuccessHandler(function(r) {
+      hideLoading();
+      if (checkSession(r)) return;
+      var div = document.getElementById('mPtResult');
+      if (r.success) {
+        showToast(r.message, 'success');
+        div.innerHTML = '<div class="card" style="text-align:center;color:#4caf50;font-weight:bold;">' + esc(r.message) + '</div>';
+      } else {
+        showToast(r.message, 'error');
+        div.innerHTML = '<div class="card" style="text-align:center;color:#f44336;">' + esc(r.message) + '</div>';
+      }
+    }).withFailureHandler(function() {
+      hideLoading();
+      showToast('操作失败', 'error');
+    }).addPointsToAll(pts, sessionToken);
   }
 
   // ===== QR 扫码 =====

@@ -157,6 +157,8 @@
       <button class="tab-btn" data-tab="verify">🎫 验票</button>
       <button class="tab-btn" data-tab="records">📋 记录</button>
       <button class="tab-btn" data-tab="whatsapp" data-role="Manager,Boss,Admin">📱 WhatsApp</button>
+      <button class="tab-btn" data-tab="customer" data-role="Manager,Boss,Admin">🔍 查询</button>
+      <button class="tab-btn" data-tab="points" data-role="Boss,Admin">💰 积分</button>
       <button class="tab-btn" data-tab="prizes" data-role="Boss,Admin">🎁 奖品</button>
       <button class="tab-btn" data-tab="music" data-role="Boss,Admin">🎵 音乐</button>
       <button class="tab-btn" data-tab="staff" data-role="Boss,Admin">👤 员工</button>
@@ -396,6 +398,39 @@
       </div>
     </div>
     
+    <!-- 顾客查询 -->
+    <div class="tab-content" id="tab-customer">
+      <div class="card">
+        <h3>🔍 顾客查询</h3>
+        <div style="display:flex;gap:8px;">
+          <input type="tel" id="custSearchPhone" placeholder="输入手机号 (如: 0123456789)" style="flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:15px;">
+          <button onclick="doSearchCustomer()" style="padding:12px 20px;background:#8b0000;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;white-space:nowrap;">查询</button>
+        </div>
+      </div>
+      <div id="custResult"></div>
+    </div>
+
+    <!-- 积分管理 -->
+    <div class="tab-content" id="tab-points">
+      <div class="card">
+        <h3>💰 指定用户加积分</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="tel" id="ptPhone" placeholder="手机号" style="flex:2;min-width:150px;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:15px;">
+          <input type="number" id="ptAmount" placeholder="积分" value="1" min="1" max="100" style="flex:1;min-width:80px;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:15px;">
+          <button onclick="doAddPoints()" style="padding:12px 20px;background:#4caf50;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;white-space:nowrap;">➕ 加积分</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>🎉 全员加积分</h3>
+        <p style="font-size:13px;color:#666;margin-bottom:12px;">给所有正常状态的会员批量加积分（每人最多10分）</p>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="ptAllAmount" placeholder="积分" value="1" min="1" max="10" style="flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:15px;">
+          <button onclick="doAddPointsAll()" style="padding:12px 20px;background:#ff9800;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;white-space:nowrap;">🎁 全员派发</button>
+        </div>
+      </div>
+      <div id="ptResult"></div>
+    </div>
+
     <!-- 员工管理 -->
     <div class="tab-content" id="tab-staff">
       <div class="card">
@@ -1274,6 +1309,110 @@
           qrScanner = null;
         });
       }
+    }
+    // ===== 顾客查询 =====
+    function doSearchCustomer() {
+      var phone = document.getElementById('custSearchPhone').value.trim();
+      if (!phone) { alert('请输入手机号'); return; }
+      var div = document.getElementById('custResult');
+      div.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">查询中...</div>';
+
+      google.script.run.withSuccessHandler(function(r) {
+        if (!r.success) { div.innerHTML = '<div class="card" style="color:#cc0000;text-align:center;padding:20px;">' + esc(r.message || '未找到用户') + '</div>'; return; }
+        var u = r.user;
+        var html = '<div class="card">';
+        html += '<h3>👤 ' + esc(u.name || '未命名') + '</h3>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">';
+        html += '<div><b>手机:</b> ' + esc(u.phone) + '</div>';
+        html += '<div><b>有效积分:</b> <span style="color:#4caf50;font-weight:bold;">' + r.activePoints + '</span></div>';
+        html += '<div><b>邀请码:</b> ' + esc(u.inviteCode) + '</div>';
+        html += '<div><b>邀请人数:</b> ' + (u.inviteCount || 0) + '</div>';
+        html += '</div>';
+
+        // 积分明细
+        if (r.pointsDetail && r.pointsDetail.length > 0) {
+          html += '<h3 style="margin-top:16px;">💰 积分明细</h3>';
+          html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><tr style="background:#f5f5f5;"><th style="padding:8px;text-align:left;">日期</th><th>来源</th><th>原始</th><th>剩余</th><th>过期</th></tr>';
+          for (var d = 0; d < r.pointsDetail.length; d++) {
+            var pt = r.pointsDetail[d];
+            var rowStyle = pt.expired ? 'color:#ccc;text-decoration:line-through;' : '';
+            html += '<tr style="border-bottom:1px solid #eee;' + rowStyle + '"><td style="padding:6px 8px;">' + esc(pt.date) + '</td><td style="text-align:center;">' + esc(pt.source) + '</td><td style="text-align:center;">' + pt.original + '</td><td style="text-align:center;font-weight:bold;">' + pt.remaining + '</td><td style="text-align:center;font-size:12px;">' + esc(pt.expiry) + '</td></tr>';
+          }
+          html += '</table>';
+        }
+
+        // 验证码列表
+        if (r.prizes && r.prizes.length > 0) {
+          html += '<h3 style="margin-top:16px;">🎫 验证码 / 奖品</h3>';
+          for (var i = 0; i < r.prizes.length; i++) {
+            var p = r.prizes[i];
+            var sc = p.status === '已核销' ? '#4caf50' : (p.status === '已过期' ? '#f44336' : '#ff9800');
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid #eee;">';
+            html += '<div><b>' + esc(p.prize) + '</b><br><span style="font-family:monospace;color:#8b0000;">' + esc(p.code) + '</span> | 到期: ' + esc(p.expiryDate) + '</div>';
+            html += '<div style="display:flex;align-items:center;gap:8px;">';
+            html += '<span style="color:' + sc + ';font-weight:bold;font-size:12px;">' + esc(p.status) + '</span>';
+            if (p.status === '未核销') {
+              html += '<button onclick="custResendWA(\'' + esc(p.code) + '\')" style="padding:6px 12px;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">发WA</button>';
+            }
+            html += '</div></div>';
+          }
+        } else {
+          html += '<div style="text-align:center;color:#ccc;padding:16px;">暂无奖品记录</div>';
+        }
+        html += '</div>';
+        div.innerHTML = html;
+      }).withFailureHandler(function() {
+        div.innerHTML = '<div class="card" style="color:#cc0000;text-align:center;">查询失败</div>';
+      }).queryUserPrizes(phone);
+    }
+
+    function custResendWA(code) {
+      google.script.run.withSuccessHandler(function(res) {
+        if (res.success) {
+          window.open(res.waLink, '_blank');
+          alert('已打开WhatsApp，请手动发送');
+        } else {
+          alert(res.message);
+        }
+      }).withFailureHandler(function() {
+        alert('发送失败');
+      }).sendWhatsAppByCode(code, sessionToken);
+    }
+
+    // ===== 积分管理 =====
+    function doAddPoints() {
+      var phone = document.getElementById('ptPhone').value.trim();
+      var pts = document.getElementById('ptAmount').value;
+      if (!phone) { alert('请输入手机号'); return; }
+      if (!pts || pts < 1) { alert('请输入有效积分数'); return; }
+
+      var div = document.getElementById('ptResult');
+      div.innerHTML = '<div style="text-align:center;padding:10px;color:#999;">处理中...</div>';
+
+      google.script.run.withSuccessHandler(function(r) {
+        div.innerHTML = '<div class="card" style="text-align:center;color:' + (r.success ? '#4caf50' : '#cc0000') + ';padding:16px;font-weight:bold;">' + esc(r.message) + '</div>';
+        if (r.success) {
+          document.getElementById('ptPhone').value = '';
+          document.getElementById('ptAmount').value = '1';
+        }
+      }).withFailureHandler(function() {
+        div.innerHTML = '<div class="card" style="color:#cc0000;text-align:center;">操作失败</div>';
+      }).addPointsManual(phone, pts, sessionToken);
+    }
+
+    function doAddPointsAll() {
+      var pts = document.getElementById('ptAllAmount').value;
+      if (!pts || pts < 1) { alert('请输入有效积分数'); return; }
+      if (!confirm('确定给所有会员各加 ' + pts + ' 积分？此操作不可撤销！')) return;
+
+      var div = document.getElementById('ptResult');
+      div.innerHTML = '<div style="text-align:center;padding:10px;color:#999;">批量处理中，请稍候...</div>';
+
+      google.script.run.withSuccessHandler(function(r) {
+        div.innerHTML = '<div class="card" style="text-align:center;color:' + (r.success ? '#4caf50' : '#cc0000') + ';padding:16px;font-weight:bold;">' + esc(r.message) + '</div>';
+      }).withFailureHandler(function() {
+        div.innerHTML = '<div class="card" style="color:#cc0000;text-align:center;">操作失败</div>';
+      }).addPointsToAll(pts, sessionToken);
     }
   </script>
 </body>
