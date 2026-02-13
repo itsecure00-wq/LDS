@@ -4,7 +4,7 @@
  * 功能：15格抽奖、积分30天过期、防重复邀请、权限分级
  */
 
-var APP_VERSION = 'v45';
+var APP_VERSION = 'v50';
 
 // ============ Web App 入口 ============
 function doGet(e) {
@@ -14,6 +14,12 @@ function doGet(e) {
   if (page === 'admin') {
     return HtmlService.createTemplateFromFile('Admin').evaluate()
       .setTitle('后台管理').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  if (page === 'mobile') {
+    return HtmlService.createTemplateFromFile('Mobile').evaluate()
+      .setTitle('移动管理').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
   }
   
   var t = HtmlService.createTemplateFromFile('Lottery');
@@ -61,9 +67,74 @@ function initHeaders(sh, n) {
   }
 }
 
+function generateStrongPassword() {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  var pwd = '';
+  for (var i = 0; i < 8; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pwd;
+}
+
+// ============ 密码哈希 ============
+function hashPassword(pwd) {
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, pwd);
+  return digest.map(function(b) { return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join('');
+}
+
+// ============ 登录频率限制 ============
+var loginAttemptCache_ = {};
+function checkLoginRateLimit(username) {
+  var key = 'login_' + username;
+  var cache = CacheService.getScriptCache();
+  var data = cache.get(key);
+  if (!data) return { allowed: true };
+  var info = JSON.parse(data);
+  if (info.locked && new Date().getTime() < info.lockUntil) {
+    var remaining = Math.ceil((info.lockUntil - new Date().getTime()) / 60000);
+    return { allowed: false, message: '登录失败次数过多，请' + remaining + '分钟后再试' };
+  }
+  return { allowed: true, attempts: info.attempts || 0 };
+}
+
+function recordLoginFailure(username) {
+  var key = 'login_' + username;
+  var cache = CacheService.getScriptCache();
+  var data = cache.get(key);
+  var info = data ? JSON.parse(data) : { attempts: 0 };
+  info.attempts = (info.attempts || 0) + 1;
+  if (info.attempts >= 5) {
+    info.locked = true;
+    info.lockUntil = new Date().getTime() + 15 * 60 * 1000; // 锁定15分钟
+    info.attempts = 0;
+  }
+  cache.put(key, JSON.stringify(info), 900); // 15分钟过期
+}
+
+function clearLoginFailures(username) {
+  CacheService.getScriptCache().remove('login_' + username);
+}
+
+// ============ 会话Token管理 ============
+function createSessionToken(staffId, staffName, staffRole) {
+  var token = Utilities.getUuid();
+  var cache = CacheService.getScriptCache();
+  var session = JSON.stringify({ id: staffId, name: staffName, role: staffRole, created: new Date().getTime() });
+  cache.put('session_' + token, session, 7200); // 2小时过期
+  return token;
+}
+
+function validateSession(token) {
+  if (!token) return null;
+  var cache = CacheService.getScriptCache();
+  var data = cache.get('session_' + token);
+  if (!data) return null;
+  return JSON.parse(data);
+}
+
 function addLog(operator, role, action, detail) {
   var sh = getSheet(SH.LOGS);
-  sh.appendRow(['L' + String(sh.getLastRow()).padStart(4, '0'), new Date(), operator, role, action, detail]);
+  sh.appendRow(['L' + Utilities.getUuid().substring(0, 8), new Date(), operator, role, action, detail]);
 }
 
 // ============ 手机号处理 ============
@@ -94,13 +165,14 @@ function registerUser(phone, name, email, refCode) {
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][1]) === p) {
       // 检查积分是否过期
-      var user = getUserFromRow(data[i], i + 1, sh);
+      var cachedRecords = getSheet(SH.RECORDS).getDataRange().getValues();
+      var user = getUserFromRow(data[i], i + 1, sh, cachedRecords);
       return { success: true, isNew: false, user: user };
     }
   }
   
   // 新用户注册
-  var uid = 'U' + String(sh.getLastRow()).padStart(4, '0');
+  var uid = 'U' + Utilities.getUuid().substring(0, 8);
   var inviteCode = generateCode();
   var now = new Date();
   var pointsExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30天后过期
@@ -145,18 +217,18 @@ function registerUser(phone, name, email, refCode) {
   };
 }
 
-function getUserFromRow(row, rowNum, sh) {
+function getUserFromRow(row, rowNum, sh, cachedRecords) {
   var now = new Date();
   var points = row[5] || 0;
   var expiry = row[6] ? new Date(row[6]) : null;
-  
+
   // 检查积分是否过期
   if (expiry && now > expiry && points > 0) {
     sh.getRange(rowNum, 6).setValue(0); // 清零积分
     points = 0;
     addLog('System', '', '积分过期', row[1] + ' 积分已过期清零');
   }
-  
+
   return {
     odoo: row[0],
     phone: String(row[1]),
@@ -164,7 +236,7 @@ function getUserFromRow(row, rowNum, sh) {
     points: points,
     inviteCode: row[8],
     inviteCount: row[10] || 0,
-    todayDraws: getTodayDrawCount(String(row[1]))
+    todayDraws: getTodayDrawCount(String(row[1]), cachedRecords)
   };
 }
 
@@ -238,16 +310,15 @@ function incrementInviteCount(phone) {
 
 function recordInvite(inviterPhone, inviterName, inviteePhone, inviteeName) {
   var sh = getSheet(SH.INVITES);
-  var id = 'I' + String(sh.getLastRow()).padStart(4, '0');
+  var id = 'I' + Utilities.getUuid().substring(0, 8);
   sh.appendRow([id, new Date(), inviterPhone, inviterName, inviteePhone, inviteeName, 1, '成功']);
 }
 
-function getTodayDrawCount(phone) {
-  var sh = getSheet(SH.RECORDS);
-  var d = sh.getDataRange().getValues();
+function getTodayDrawCount(phone, cachedRecords) {
+  var d = cachedRecords || getSheet(SH.RECORDS).getDataRange().getValues();
   var today = Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd');
   var count = 0;
-  
+
   for (var i = 1; i < d.length; i++) {
     if (String(d[i][3]) === phone && d[i][1]) {
       var drawDate = Utilities.formatDate(new Date(d[i][1]), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd');
@@ -257,17 +328,17 @@ function getTodayDrawCount(phone) {
   return count;
 }
 
-function getUserInfo(phone) {
+function getUserInfo(phone, cachedRecords) {
   var v = validatePhone(phone);
   if (!v.valid) return { success: false };
   var p = v.phone;
-  
+
   var sh = getSheet(SH.USERS);
   var d = sh.getDataRange().getValues();
-  
+
   for (var i = 1; i < d.length; i++) {
     if (String(d[i][1]) === p) {
-      return { success: true, user: getUserFromRow(d[i], i + 1, sh) };
+      return { success: true, user: getUserFromRow(d[i], i + 1, sh, cachedRecords) };
     }
   }
   return { success: false };
@@ -340,7 +411,9 @@ function doLottery(phone) {
   if (!v.valid) return { success: false, message: '手机号格式错误' };
   var p = v.phone;
 
-  var u = getUserInfo(p);
+  // 缓存记录数据，减少重复全表扫描
+  var cachedRecords = getSheet(SH.RECORDS).getDataRange().getValues();
+  var u = getUserInfo(p, cachedRecords);
   if (!u.success) return { success: false, message: '请先登记' };
 
   if (u.user.todayDraws >= 3) {
@@ -351,73 +424,88 @@ function doLottery(phone) {
     return { success: false, message: '积分不足', inviteCode: u.user.inviteCode };
   }
 
-  if (!deductPoints(p)) {
-    return { success: false, message: '积分不足', inviteCode: u.user.inviteCode };
-  }
-
-  // 使用锁防止库存竞争条件
+  // 使用锁保护积分扣减+库存操作的原子性
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000); // 等待最多10秒
   } catch(e) {
-    addPointsToUser(p, 1); // 退还积分
     return { success: false, message: '系统繁忙，请稍后重试' };
   }
 
   try {
-    // 获取奖品（锁内读取确保数据一致）
-    var psh = getSheet(SH.PRIZES);
-    var pd = psh.getDataRange().getValues();
-    var available = [];
-    var totalWeight = 0;
-
-    for (var i = 1; i < pd.length; i++) {
-      var remaining = (pd[i][3] || 0) - (pd[i][4] || 0);
-      var weight = pd[i][6] || 0;
-      if (remaining > 0 && weight > 0 && pd[i][9] === '启用') {
-        available.push({
-          row: i + 1,
-          name: pd[i][1],
-          icon: pd[i][2] || '🎁',
-          weight: weight,
-          isGrand: pd[i][8] === true || pd[i][8] === 'TRUE' || pd[i][8] === '是'
-        });
-        totalWeight += weight;
-      }
-    }
-
-    if (available.length === 0) {
+    // 锁内扣减积分（防止并发积分竞争）
+    if (!deductPoints(p)) {
       lock.releaseLock();
-      addPointsToUser(p, 1);
-      return { success: false, message: '奖品已抽完' };
+      return { success: false, message: '积分不足', inviteCode: u.user.inviteCode };
     }
 
-    // 随机选择
-    var rnd = Math.random() * totalWeight;
-    var selected = available[0];
-    for (var j = 0; j < available.length; j++) {
-      rnd -= available[j].weight;
-      if (rnd <= 0) {
-        selected = available[j];
+    var psh = getSheet(SH.PRIZES);
+    var selected = null;
+    var MAX_RETRIES = 3;
+
+    for (var attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      // 每次重试重新读取奖品数据（锁内读取确保数据一致）
+      var pd = psh.getDataRange().getValues();
+      var available = [];
+      var totalWeight = 0;
+
+      for (var i = 1; i < pd.length; i++) {
+        var remaining = (pd[i][3] || 0) - (pd[i][4] || 0);
+        var weight = pd[i][6] || 0;
+        if (remaining > 0 && weight > 0 && pd[i][9] === '启用') {
+          available.push({
+            row: i + 1,
+            name: pd[i][1],
+            icon: pd[i][2] || '🎁',
+            weight: weight,
+            isGrand: pd[i][8] === true || pd[i][8] === 'TRUE' || pd[i][8] === '是'
+          });
+          totalWeight += weight;
+        }
+      }
+
+      if (available.length === 0) {
+        addPointsToUser(p, 1); // 锁内退还
+        lock.releaseLock();
+        return { success: false, message: '奖品已抽完' };
+      }
+
+      // 随机选择
+      var rnd = Math.random() * totalWeight;
+      selected = available[0];
+      for (var j = 0; j < available.length; j++) {
+        rnd -= available[j].weight;
+        if (rnd <= 0) {
+          selected = available[j];
+          break;
+        }
+      }
+
+      // 更新库存（锁内写入，确保原子性）
+      var freshUsed = psh.getRange(selected.row, 5).getValue() || 0;
+      var freshTotal = psh.getRange(selected.row, 4).getValue() || 0;
+      if (freshUsed < freshTotal) {
+        // 库存充足，写入并跳出循环
+        psh.getRange(selected.row, 5).setValue(freshUsed + 1);
+        SpreadsheetApp.flush(); // 立即写入
         break;
       }
+
+      // 库存已被其他人抢完，继续下一次重试
+      selected = null;
     }
 
-    // 更新库存（锁内写入，确保原子性）
-    var freshUsed = psh.getRange(selected.row, 5).getValue() || 0;
-    var freshTotal = psh.getRange(selected.row, 4).getValue() || 0;
-    if (freshUsed >= freshTotal) {
-      // 库存已被其他人抢完，重新选择
+    // 重试耗尽仍未选到奖品
+    if (!selected) {
+      addPointsToUser(p, 1); // 锁内退还
       lock.releaseLock();
-      addPointsToUser(p, 1);
-      return doLottery(phone); // 重试
+      return { success: false, message: '奖品库存不足，请稍后重试' };
     }
-    psh.getRange(selected.row, 5).setValue(freshUsed + 1);
-    SpreadsheetApp.flush(); // 立即写入
+
     lock.releaseLock();
   } catch(e) {
-    lock.releaseLock();
-    addPointsToUser(p, 1);
+    try { addPointsToUser(p, 1); } catch(ignored2) {}
+    try { lock.releaseLock(); } catch(ignored) {}
     return { success: false, message: '系统错误，请重试' };
   }
 
@@ -428,7 +516,7 @@ function doLottery(phone) {
 
   // 记录
   var rsh = getSheet(SH.RECORDS);
-  var rid = 'R' + String(rsh.getLastRow()).padStart(4, '0');
+  var rid = 'R' + Utilities.getUuid().substring(0, 8);
   rsh.appendRow([
     rid, new Date(), u.user.odoo, p, u.user.name,
     selected.name, code, expiry, '待发送', '', '未核销', '', '', ''
@@ -466,32 +554,53 @@ function getAppVersion() {
 }
 
 function adminLogin(username, password) {
-  var d = getSheet(SH.STAFF).getDataRange().getValues();
+  var u = username.trim();
+  // 频率限制检查
+  var rateCheck = checkLoginRateLimit(u);
+  if (!rateCheck.allowed) return { success: false, message: rateCheck.message };
+
+  var sh = getSheet(SH.STAFF);
+  var d = sh.getDataRange().getValues();
+  var hashedInput = hashPassword(password.trim());
 
   for (var i = 1; i < d.length; i++) {
     var sheetUser = String(d[i][2]).trim();
     var sheetPass = String(d[i][3]).trim();
     var sheetStatus = String(d[i][5]).trim();
 
-    if (sheetUser === username.trim() && sheetPass === password.trim()) {
+    if (sheetUser !== u) continue;
+
+    // 支持哈希密码和明文密码（兼容旧数据）
+    var match = (sheetPass === hashedInput) || (sheetPass.length < 64 && sheetPass === password.trim());
+
+    if (match) {
       if (sheetStatus !== '启用') {
         return { success: false, message: '账号已停用，请联系管理员' };
       }
-      getSheet(SH.STAFF).getRange(i + 1, 8).setValue(new Date());
-      addLog(d[i][1], d[i][4], '登录', '管理员登录');
+      // 如果是明文密码，自动升级为哈希
+      if (sheetPass.length < 64) {
+        sh.getRange(i + 1, 4).setValue(hashedInput);
+      }
+      sh.getRange(i + 1, 8).setValue(new Date());
+      clearLoginFailures(u);
+      var role = String(d[i][4]).trim();
+      var token = createSessionToken(d[i][0], d[i][1], role);
+      addLog(d[i][1], role, '登录', '管理员登录');
       return {
         success: true,
         version: APP_VERSION,
+        sessionToken: token,
         staff: {
           id: d[i][0],
           name: d[i][1],
           username: d[i][2],
-          role: String(d[i][4]).trim()
+          role: role
         }
       };
     }
   }
-  return { success: false, message: '账号或密码错误（共' + (d.length - 1) + '个员工）' };
+  recordLoginFailure(u);
+  return { success: false, message: '账号或密码错误' };
 }
 
 // 查询验证码
@@ -525,20 +634,23 @@ function queryCode(code) {
   return { found: false };
 }
 
-// 核销验证码
-function verifyCode(code, staffName, staffRole) {
+// 核销验证码（服务端权限校验）
+function verifyCode(code, sessionToken) {
+  var session = validateSession(sessionToken);
+  if (!session) return { success: false, message: '会话已过期，请重新登录' };
+
   var r = queryCode(code);
   if (!r.found) return { success: false, message: '验证码不存在' };
   if (r.status === '已核销') return { success: false, message: '此验证码已核销', verifyTime: r.verifyTime, verifyBy: r.verifyBy };
   if (r.status === '已过期') return { success: false, message: '验证码已过期' };
-  
+
   var sh = getSheet(SH.RECORDS);
   sh.getRange(r.row, 11).setValue('已核销');
   sh.getRange(r.row, 12).setValue(new Date());
-  sh.getRange(r.row, 13).setValue(staffName);
-  
-  addLog(staffName, staffRole, '核销', '核销: ' + code + ' (' + r.prize + ')');
-  
+  sh.getRange(r.row, 13).setValue(session.name);
+
+  addLog(session.name, session.role, '核销', '核销: ' + code + ' (' + r.prize + ')');
+
   return { success: true, prize: r.prize, message: '核销成功！请发放: ' + r.prize };
 }
 
@@ -608,25 +720,30 @@ function getWAList(filter) {
   return { records: records.slice(0, 50), pending: pending, sent: sent };
 }
 
-function sendWhatsAppByCode(code, staffName, staffRole) {
+function sendWhatsAppByCode(code, sessionToken) {
+  var session = validateSession(sessionToken);
+  if (!session) return { success: false, message: '会话已过期，请重新登录' };
+  // 权限检查：Staff不可发WA
+  if (session.role === 'Staff') return { success: false, message: '无权限发送WhatsApp' };
+
   var sh = getSheet(SH.RECORDS);
   var d = sh.getDataRange().getValues();
-  
+
   for (var i = 1; i < d.length; i++) {
     if (d[i][6] && String(d[i][6]).toUpperCase() === code.toUpperCase()) {
       sh.getRange(i + 1, 9).setValue('已发送');
       sh.getRange(i + 1, 10).setValue(new Date());
-      
+
       var phone = d[i][3];
       var prize = d[i][5];
       var expiry = d[i][7] ? Utilities.formatDate(new Date(d[i][7]), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd') : '';
-      
+
       var waAlreadySent = d[i][8] === '已发送';
-      addLog(staffName || 'System', staffRole || '', waAlreadySent ? 'WhatsApp重发' : 'WhatsApp发送', (waAlreadySent ? '重发' : '发送') + ': ' + code + ' -> ' + phone);
+      addLog(session.name, session.role, waAlreadySent ? 'WhatsApp重发' : 'WhatsApp发送', (waAlreadySent ? '重发' : '发送') + ': ' + code + ' -> ' + phone);
 
       var msg = buildWAMessage(waAlreadySent ? 'resend' : 'send', prize, code, expiry);
       var waLink = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
-      
+
       return { success: true, message: '已标记发送', phone: phone, waLink: waLink };
     }
   }
@@ -800,8 +917,9 @@ function savePrizeConfig(prizes) {
 
 function addPrize(name, icon, stock, weight, value, isGrand) {
   var sh = getSheet(SH.PRIZES);
-  var id = 'P' + String(sh.getLastRow()).padStart(3, '0');
-  sh.appendRow([id, name, icon || '🎁', stock, 0, '=D' + (sh.getLastRow() + 1) + '-E' + (sh.getLastRow() + 1), weight, value, isGrand ? '是' : '否', '启用', sh.getLastRow()]);
+  var id = 'P' + Utilities.getUuid().substring(0, 6);
+  var newRow = sh.getLastRow() + 1;
+  sh.appendRow([id, name, icon || '🎁', stock, 0, '=D' + newRow + '-E' + newRow, weight, value, isGrand ? '是' : '否', '启用', newRow - 1]);
   return { success: true, message: '添加成功' };
 }
 
@@ -826,8 +944,8 @@ function getStaffList() {
 
 function addStaff(name, username, password, role) {
   var sh = getSheet(SH.STAFF);
-  var id = 'S' + String(sh.getLastRow()).padStart(3, '0');
-  sh.appendRow([id, name, username, password, role, '启用', new Date(), '']);
+  var id = 'S' + Utilities.getUuid().substring(0, 6);
+  sh.appendRow([id, name, username, hashPassword(password), role, '启用', new Date(), '']);
   return { success: true, message: '添加成功' };
 }
 
@@ -840,7 +958,7 @@ function updateStaff(row, name, username, password, role) {
   var sh = getSheet(SH.STAFF);
   sh.getRange(row, 2).setValue(name);
   sh.getRange(row, 3).setValue(username);
-  if (password) sh.getRange(row, 4).setValue(password);
+  if (password) sh.getRange(row, 4).setValue(hashPassword(password));
   sh.getRange(row, 5).setValue(role);
   return { success: true, message: '员工信息已更新' };
 }
@@ -856,9 +974,9 @@ function getWATemplates() {
   var sh = getSheet('系统设置');
   var d = sh.getDataRange().getValues();
   var templates = {
-    send: '【张崇会火锅】恭喜您中奖！🎉\n\n🎁 奖品：{prize}\n🔑 验证码：{code}\n📅 有效期至：{expiry}\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n{qrUrl}\n\n请到店出示此二维码给店员扫描兑换！',
-    resend: '【张崇会火锅】验证码重发 📩\n\n🎁 奖品：{prize}\n🔑 验证码：{code}\n📅 有效期至：{expiry}\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n{qrUrl}\n\n请到店出示此二维码给店员扫描兑换！',
-    reminder: '【张崇会火锅】温馨提醒 ⏰\n\n您有一份奖品即将过期！\n\n🎁 奖品：{prize}\n🔑 验证码：{code}\n📅 有效期至：{expiry}（剩余7天）\n📍 地点：张崇会火锅 百万镇分店\n🍽️ 仅限周一至周四堂食\n\n📱 验证码二维码（点击查看）：\n{qrUrl}\n\n请尽快到店兑换，过期作废！'
+    send: '\u3010\u5F20\u5D07\u4F1A\u706B\u9505\u3011\n\n\u606D\u559C\u4F60\u4E2D\u5956\u5566\uFF01\u592A\u68D2\u4E86 ~\n\n* \u4F60\u62BD\u5230\u7684\u5956\u54C1\u662F\uFF1A*{prize}*\n* \u5151\u6362\u9A8C\u8BC1\u7801\uFF1A*{code}*\n* \u4F7F\u7528\u6709\u6548\u671F\u5230\uFF1A*{expiry}*\n\n>> \u5151\u6362\u5730\u70B9\uFF1A\u5F20\u5D07\u4F1A\u706B\u9505\u767E\u4E07\u9547\u5206\u5E97\n>> \u4EC5\u9650\u5468\u4E00\u81F3\u5468\u56DB\u5802\u98DF\u4F7F\u7528\n>> \u4E00\u5F20\u6D88\u8D39\u5355\u53EA\u80FD\u5151\u6362 1 \u4EFD\u5956\u54C1\n\n\u8FD9\u662F\u4F60\u7684\u5151\u6362\u4E8C\u7EF4\u7801\uFF08\u70B9\u5F00\u7ED9\u5E97\u5458\u770B\u5C31\u53EF\u4EE5\uFF09\uFF1A\n{qrUrl}\n\n\u5230\u5E97\u540E\u628A\u8FD9\u4E2A WhatsApp \u4FE1\u606F\u6216\u4E8C\u7EF4\u7801\u51FA\u793A\u7ED9\u5E97\u5458\u626B\u63CF\u5373\u53EF\n\u6B22\u8FCE\u4F60\u56DE\u6765\u5403\u706B\u9505\uFF0C\u795D\u4F60\u65B0\u5E74\u597D\u8FD0\uFF5E',
+    resend: '\u3010\u5F20\u5D07\u4F1A\u706B\u9505 \u00B7 \u5E2E\u4F60\u91CD\u53D1\u9A8C\u8BC1\u7801\u54E6\u3011\n\n\u4E0D\u597D\u610F\u601D\uFF0C\u521A\u521A\u53EF\u80FD\u6CA1\u6536\u5230\uFF5E\n\u8FD9\u8FB9\u518D\u5E2E\u4F60\u91CD\u53D1\u4E00\u6B21\u4F60\u7684\u4E2D\u5956\u4FE1\u606F\n\n* \u4F60\u62BD\u5230\u7684\u5956\u54C1\u662F\uFF1A*{prize}*\n* \u5151\u6362\u9A8C\u8BC1\u7801\uFF1A*{code}*\n* \u4F7F\u7528\u6709\u6548\u671F\u5230\uFF1A*{expiry}*\n\n>> \u5151\u6362\u5730\u70B9\uFF1A\u5F20\u5D07\u4F1A\u706B\u9505\u767E\u4E07\u9547\u5206\u5E97\n>> \u4EC5\u9650\u5468\u4E00\u81F3\u5468\u56DB\u5802\u98DF\u4F7F\u7528\n>> \u4E00\u5F20\u6D88\u8D39\u5355\u53EA\u80FD\u5151\u6362 1 \u4EFD\u5956\u54C1\n\n\u8FD9\u662F\u4F60\u7684\u5151\u6362\u4E8C\u7EF4\u7801\uFF08\u70B9\u5F00\u7ED9\u5E97\u5458\u770B\u5C31\u53EF\u4EE5\uFF09\uFF1A\n{qrUrl}\n\n\u5230\u5E97\u540E\u628A\u8FD9\u4E2A WhatsApp \u4FE1\u606F\u6216\u4E8C\u7EF4\u7801\u51FA\u793A\u7ED9\u5E97\u5458\u626B\u63CF\u5373\u53EF\n\u6B22\u8FCE\u4F60\u56DE\u6765\u5403\u706B\u9505\uFF0C\u795D\u4F60\u65B0\u5E74\u597D\u8FD0\uFF5E',
+    reminder: '\u3010\u5F20\u5D07\u4F1A\u706B\u9505 \u00B7 \u6E29\u99A8\u63D0\u9192\u3011\n\n\u4F60\u6709\u4E00\u4EFD\u5956\u54C1\u5FEB\u8981\u8FC7\u671F\u4E86\u54E6\uFF01\n\n* \u5956\u54C1\uFF1A*{prize}*\n* \u9A8C\u8BC1\u7801\uFF1A*{code}*\n* \u6709\u6548\u671F\u5230\uFF1A*{expiry}*\uFF08\u5269\u4F597\u5929\uFF09\n\n>> \u5151\u6362\u5730\u70B9\uFF1A\u5F20\u5D07\u4F1A\u706B\u9505\u767E\u4E07\u9547\u5206\u5E97\n>> \u4EC5\u9650\u5468\u4E00\u81F3\u5468\u56DB\u5802\u98DF\u4F7F\u7528\n\n\u8FD9\u662F\u4F60\u7684\u5151\u6362\u4E8C\u7EF4\u7801\uFF1A\n{qrUrl}\n\n\u8D76\u7D27\u6765\u5403\u706B\u9505\u5427\uFF0C\u8FC7\u671F\u5C31\u4F5C\u5E9F\u4E86\u54E6\uFF01'
   };
 
   for (var i = 1; i < d.length; i++) {
@@ -891,6 +1009,17 @@ function saveWATemplates(send, resend, reminder) {
 
   addLog('Admin', '', '更新WA模板', '已更新WhatsApp消息模板');
   return { success: true, message: '模板保存成功' };
+}
+
+function resetWATemplates() {
+  var sh = getSheet('系统设置');
+  var d = sh.getDataRange().getValues();
+  for (var i = d.length - 1; i >= 1; i--) {
+    if (d[i][0] === 'waTplSend' || d[i][0] === 'waTplResend' || d[i][0] === 'waTplReminder') {
+      sh.deleteRow(i + 1);
+    }
+  }
+  return '已重置WhatsApp模板为默认版本';
 }
 
 function buildWAMessage(type, prize, code, expiry) {
@@ -1040,12 +1169,16 @@ function initializeSystem() {
   // 添加默认员工
   var sf = getSheet(SH.STAFF);
   if (sf.getLastRow() <= 1) {
-    sf.appendRow(['S001', '老板', 'boss', '888888', 'Admin', '启用', new Date(), '']);
-    sf.appendRow(['S002', '经理', 'manager', '123456', 'Manager', '启用', new Date(), '']);
-    sf.appendRow(['S003', '员工', 'staff', '111111', 'Staff', '启用', new Date(), '']);
+    var p1 = generateStrongPassword();
+    var p2 = generateStrongPassword();
+    var p3 = generateStrongPassword();
+    sf.appendRow(['S001', '老板', 'boss', p1, 'Admin', '启用', new Date(), '']);
+    sf.appendRow(['S002', '经理', 'manager', p2, 'Manager', '启用', new Date(), '']);
+    sf.appendRow(['S003', '员工', 'staff', p3, 'Staff', '启用', new Date(), '']);
+    return '✅ 系统初始化完成！默认账号密码：\nboss: ' + p1 + '\nmanager: ' + p2 + '\nstaff: ' + p3 + '\n⚠️ 请立即记录并修改密码！';
   }
-  
-  return '✅ 系统初始化完成！包含15个奖品和3个默认员工账号';
+
+  return '✅ 系统初始化完成！包含15个奖品和默认员工账号';
 }
 
 // ============ 压力测试 ============
@@ -1211,6 +1344,78 @@ function cleanTestData() {
   }
 
   return '✅ 测试数据已清理（删除' + rowsToDelete.length + '个测试用户，' + recRowsToDelete.length + '条抽奖记录，库存已重算）';
+}
+
+// ============ 数据备份 ============
+function backupData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var name = ss.getName() + ' 备份 ' + Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd HH:mm');
+  var backup = ss.copy(name);
+  var folder = DriveApp.getFileById(ss.getId()).getParents();
+  if (folder.hasNext()) {
+    var parent = folder.next();
+    // 尝试放入"备份"子文件夹
+    var backupFolders = parent.getFoldersByName('备份');
+    var target = backupFolders.hasNext() ? backupFolders.next() : parent.createFolder('备份');
+    DriveApp.getFileById(backup.getId()).moveTo(target);
+  }
+  addLog('System', '', '数据备份', '自动备份: ' + name);
+  return '✅ 备份成功: ' + name;
+}
+
+// ============ 上线前清空数据 ============
+function resetDataForLaunch() {
+  // 先备份
+  backupData();
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. 清空用户表 (保留表头)
+  var users = ss.getSheetByName(SH.USERS);
+  if (users && users.getLastRow() > 1) {
+    users.deleteRows(2, users.getLastRow() - 1);
+  }
+
+  // 2. 清空抽奖记录表 (保留表头)
+  var records = ss.getSheetByName(SH.RECORDS);
+  if (records && records.getLastRow() > 1) {
+    records.deleteRows(2, records.getLastRow() - 1);
+  }
+
+  // 3. 清空邀请记录表 (保留表头)
+  var invites = ss.getSheetByName(SH.INVITES);
+  if (invites && invites.getLastRow() > 1) {
+    invites.deleteRows(2, invites.getLastRow() - 1);
+  }
+
+  // 4. 奖品表：已抽数量重置为0
+  var prizes = ss.getSheetByName(SH.PRIZES);
+  if (prizes && prizes.getLastRow() > 1) {
+    var range = prizes.getRange(2, 5, prizes.getLastRow() - 1, 1); // E列=已抽
+    var values = range.getValues();
+    for (var i = 0; i < values.length; i++) {
+      values[i][0] = 0;
+    }
+    range.setValues(values);
+  }
+
+  addLog('System', '', '数据重置', '上线前清空: 用户/记录/邀请/奖品已抽');
+  return '✅ 数据已清空，可以上线了！';
+}
+
+function setupBackupTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'backupData') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger('backupData')
+    .timeBased()
+    .everyDays(1)
+    .atHour(3) // 凌晨3点备份
+    .create();
+  return { success: true, message: '已设置每日凌晨3点自动备份' };
 }
 
 // ============ 音乐代理 ============

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>移动管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, 'Microsoft YaHei', sans-serif; background: #f0f2f5; min-height: 100vh; -webkit-tap-highlight-color: transparent; user-select: none; overflow-x: hidden; }
+
+    /* ===== 登录页 ===== */
+    .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #8b0000, #5c0000); padding: 20px; }
+    .login-box { background: #fff; padding: 30px 24px; border-radius: 16px; width: 100%; max-width: 360px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+    .login-logo { font-size: 48px; margin-bottom: 8px; }
+    .login-box h1 { color: #8b0000; font-size: 22px; margin-bottom: 4px; }
+    .login-box .subtitle { color: #999; font-size: 13px; margin-bottom: 20px; }
+    .login-error { color: #f44336; font-size: 13px; margin-bottom: 10px; min-height: 20px; }
+    .login-box input { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; margin-bottom: 12px; outline: none; }
+    .login-box input:focus { border-color: #8b0000; }
+    .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; cursor: pointer; }
+    .login-btn:disabled { opacity: 0.6; }
+    .version-info { color: #ccc; font-size: 11px; margin-top: 15px; }
+
+    /* ===== 主界面 ===== */
+    .app-page { display: none; min-height: 100vh; }
+
+    /* 顶部栏 */
+    .app-header { background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .header-name { font-size: 15px; font-weight: bold; }
+    .role-badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+    .role-badge.Boss, .role-badge.Admin { background: #ffd700; color: #8b0000; }
+    .role-badge.Manager { background: #4caf50; color: #fff; }
+    .role-badge.Staff { background: #2196f3; color: #fff; }
+    .logout-btn { background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+
+    /* 面板容器 */
+    .panels { padding: 12px; padding-bottom: 80px; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* 底部导航 */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e0e0e0; display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 0; border: none; background: none; cursor: pointer; min-height: 56px; color: #999; font-size: 11px; transition: color 0.2s; }
+    .nav-item.active { color: #8b0000; }
+    .nav-item .nav-icon { font-size: 22px; margin-bottom: 2px; }
+    .nav-item .nav-label { font-weight: 600; }
+
+    /* ===== 通用组件 ===== */
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .card h3 { font-size: 15px; color: #8b0000; margin-bottom: 12px; }
+
+    .code-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .code-input-row input { flex: 1; padding: 14px; border: 2px solid #ddd; border-radius: 10px; font-size: 18px; font-family: monospace; text-transform: uppercase; text-align: center; outline: none; }
+    .code-input-row input:focus { border-color: #8b0000; }
+    .scan-btn { width: 52px; min-height: 52px; background: #25a244; color: #fff; border: none; border-radius: 10px; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    .action-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; min-height: 48px; }
+    .action-btn.primary { background: #8b0000; color: #fff; }
+    .action-btn.success { background: #4caf50; color: #fff; }
+    .action-btn.wa { background: #25D366; color: #fff; }
+    .action-btn:disabled { opacity: 0.6; }
+
+    /* 状态徽标 */
+    .status { display: inline-block; padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: bold; }
+    .status.pending { background: #fff3e0; color: #e65100; }
+    .status.verified { background: #e8f5e9; color: #2e7d32; }
+    .status.expired { background: #ffebee; color: #c62828; }
+    .status.sent { background: #e3f2fd; color: #1565c0; }
+
+    /* ===== 验票结果 ===== */
+    .verify-result { margin-top: 12px; padding: 16px; border-radius: 12px; }
+    .verify-result.valid { background: #e8f5e9; border: 2px solid #4caf50; }
+    .verify-result.error { background: #ffebee; border: 2px solid #f44336; }
+    .verify-result.warning { background: #fff3e0; border: 2px solid #ff9800; }
+    .verify-result .result-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
+    .verify-result .detail-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .verify-result .detail-row:last-child { border-bottom: none; }
+    .verify-result .detail-label { color: #666; }
+    .verify-result .detail-value { font-weight: bold; color: #333; }
+
+    /* ===== WhatsApp 列表 ===== */
+    .filter-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .filter-chip { padding: 10px 18px; border: 1px solid #ddd; background: #fff; border-radius: 20px; font-size: 14px; cursor: pointer; white-space: nowrap; min-height: 40px; }
+    .filter-chip.active { background: #8b0000; color: #fff; border-color: #8b0000; }
+
+    .wa-item { padding: 14px; background: #fff; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .wa-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .wa-code { font-family: monospace; font-size: 15px; font-weight: bold; color: #8b0000; }
+    .wa-item-info { font-size: 13px; color: #666; line-height: 1.6; }
+    .wa-send-btn { padding: 10px 20px; min-height: 44px; background: #25D366; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 8px; width: 100%; }
+    .wa-resend-btn { background: #ff9800; }
+    .wa-count { text-align: center; font-size: 13px; color: #999; padding: 8px; }
+
+    /* ===== 查询结果 ===== */
+    .user-card { background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .user-card .user-name { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+    .user-card .user-phone { font-size: 14px; opacity: 0.8; margin-bottom: 12px; }
+    .user-stats { display: flex; gap: 12px; }
+    .user-stat { flex: 1; background: rgba(255,255,255,0.15); border-radius: 8px; padding: 10px; text-align: center; }
+    .user-stat .stat-num { font-size: 22px; font-weight: bold; }
+    .user-stat .stat-label { font-size: 11px; opacity: 0.8; }
+
+    .prize-item { padding: 12px; background: #fff; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .prize-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .prize-name { font-weight: bold; font-size: 15px; color: #333; }
+    .prize-detail { font-size: 12px; color: #999; }
+
+    /* ===== 空状态 ===== */
+    .empty-state { text-align: center; color: #ccc; padding: 30px 20px; font-size: 14px; }
+
+    /* ===== Toast ===== */
+    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 24px; border-radius: 10px; font-size: 14px; z-index: 5000; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; text-align: center; }
+    .toast.show { opacity: 1; }
+    .toast.success { background: #4caf50; }
+    .toast.error { background: #f44336; }
+
+    /* ===== QR 扫码 ===== */
+    .qr-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 3000; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    .qr-overlay.show { display: flex; }
+    .qr-header { color: #fff; text-align: center; margin-bottom: 20px; }
+    .qr-header h3 { font-size: 18px; margin-bottom: 6px; }
+    .qr-header p { font-size: 13px; color: #ccc; }
+    .qr-close-btn { margin-top: 20px; padding: 14px 40px; background: #cc0000; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+
+    /* ===== 加载 ===== */
+    .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+    .loading-overlay.show { display: flex; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.4/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- 登录页 -->
+  <div class="login-page" id="loginPage">
+    <div class="login-box">
+      <div class="login-logo">🍲</div>
+      <h1>张崇会火锅</h1>
+      <div class="subtitle">移动管理端</div>
+      <div class="login-error" id="loginError"></div>
+      <input type="text" id="username" placeholder="账号" autocomplete="username">
+      <input type="password" id="password" placeholder="密码" autocomplete="current-password">
+      <button class="login-btn" id="loginBtn" onclick="doLogin()">登 录</button>
+      <div class="version-info" id="versionInfo"></div>
+    </div>
+  </div>
+
+  <!-- 主界面 -->
+  <div class="app-page" id="appPage">
+    <div class="app-header">
+      <div class="header-left">
+        <span class="header-name" id="staffName"></span>
+        <span class="role-badge" id="staffRole"></span>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">退出</button>
+    </div>
+
+    <div class="panels">
+      <!-- 验票 -->
+      <div class="panel active" id="panel-verify">
+        <div class="card">
+          <h3>🎫 验证码核销</h3>
+          <div class="code-input-row">
+            <input type="text" id="verifyCodeInput" placeholder="ZCH123456" maxlength="12" autocomplete="off">
+            <button class="scan-btn" onclick="startQRScanner('verify')">📷</button>
+          </div>
+          <button class="action-btn primary" onclick="doQueryCode()">🔍 查询验证码</button>
+        </div>
+        <div id="verifyResult"></div>
+      </div>
+
+      <!-- WhatsApp -->
+      <div class="panel" id="panel-whatsapp">
+        <div class="card">
+          <h3>📱 发送验证码</h3>
+          <div class="code-input-row">
+            <input type="text" id="waCodeInput" placeholder="输入验证码" maxlength="12" autocomplete="off">
+            <button class="scan-btn" onclick="startQRScanner('whatsapp')">📷</button>
+          </div>
+          <button class="action-btn wa" onclick="doManualSendWA()">📤 发送 WhatsApp</button>
+        </div>
+        <div class="filter-row">
+          <button class="filter-chip active" onclick="filterWA('pending', this)">待发送</button>
+          <button class="filter-chip" onclick="filterWA('sent', this)">已发送</button>
+        </div>
+        <div class="wa-count" id="waCount"></div>
+        <div id="waList"><div class="empty-state">加载中...</div></div>
+      </div>
+
+      <!-- 查询 -->
+      <div class="panel" id="panel-query">
+        <div class="card">
+          <h3>🔍 查询顾客记录</h3>
+          <input type="tel" id="queryPhone" placeholder="输入手机号 (如: 0123456789)" style="width:100%;padding:14px;border:2px solid #ddd;border-radius:10px;font-size:16px;margin-bottom:10px;outline:none;">
+          <button class="action-btn primary" onclick="doQueryUser()">🔍 查询</button>
+        </div>
+        <div id="queryResult"></div>
+      </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav" id="bottomNav">
+      <button class="nav-item active" data-panel="verify" onclick="switchTab('verify')">
+        <span class="nav-icon">🎫</span>
+        <span class="nav-label">验票</span>
+      </button>
+      <button class="nav-item" data-panel="whatsapp" onclick="switchTab('whatsapp')">
+        <span class="nav-icon">📱</span>
+        <span class="nav-label">WhatsApp</span>
+      </button>
+      <button class="nav-item" data-panel="query" onclick="switchTab('query')">
+        <span class="nav-icon">🔍</span>
+        <span class="nav-label">查询</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- QR 扫码覆盖层 -->
+  <div class="qr-overlay" id="qrOverlay">
+    <div class="qr-header">
+      <h3>📷 扫描验证码</h3>
+      <p>将二维码对准摄像头</p>
+    </div>
+    <div id="qr-reader" style="width:100%;max-width:350px;"></div>
+    <button class="qr-close-btn" onclick="stopQRScanner()">关闭扫描</button>
+  </div>
+
+  <!-- 加载遮罩 -->
+  <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+<script>
+  // ===== 状态变量 =====
+  var sessionToken = null;
+  var currentStaff = null;
+  var currentCode = null;
+  var waData = [];
+  var waFilter = 'pending';
+  var qrScanner = null;
+  var scannerMode = '';
+
+  // ===== 工具函数 =====
+  function esc(s) { if (s == null) return ''; var d = document.createElement('div'); d.appendChild(document.createTextNode(String(s))); return d.innerHTML; }
+  function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
+  function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+
+  function showToast(msg, type) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (type ? ' ' + type : '');
+    setTimeout(function() { t.classList.remove('show'); }, 2500);
+  }
+
+  function formatPhone(p) { p = p.replace(/[\s\-\(\)\+]/g, ''); if (/^0[1-9]\d{7,9}$/.test(p)) return '60' + p.substring(1); if (/^[89]\d{7}$/.test(p)) return '65' + p; return p; }
+
+  function checkSession(r) {
+    if (r && r.message && r.message.indexOf('\u4F1A\u8BDD\u5DF2\u8FC7\u671F') >= 0) {
+      showToast('\u4F1A\u8BDD\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55', 'error');
+      doLogout();
+      return true;
+    }
+    return false;
+  }
+
+  // ===== 登录 =====
+  function doLogin() {
+    var u = document.getElementById('username').value.trim();
+    var p = document.getElementById('password').value.trim();
+    if (!u || !p) { document.getElementById('loginError').textContent = '请输入账号和密码'; return; }
+
+    var btn = document.getElementById('loginBtn');
+    btn.disabled = true; btn.textContent = '登录中...';
+    document.getElementById('loginError').textContent = '';
+
+    google.script.run.withSuccessHandler(function(r) {
+      btn.disabled = false; btn.textContent = '登 录';
+      if (!r.success) { document.getElementById('loginError').textContent = r.message; return; }
+      sessionToken = r.sessionToken || null;
+      currentStaff = { name: r.staff.name, role: r.staff.role };
+      try { sessionStorage.setItem('mobileSession', JSON.stringify({ staff: currentStaff, token: sessionToken })); } catch(e) {}
+      showApp();
+    }).withFailureHandler(function(e) {
+      btn.disabled = false; btn.textContent = '登 录';
+      document.getElementById('loginError').textContent = '网络错误，请重试';
+    }).adminLogin(u, p);
+  }
+
+  function doLogout() {
+    sessionToken = null; currentStaff = null; currentCode = null; waData = [];
+    try { sessionStorage.removeItem('mobileSession'); } catch(e) {}
+    document.getElementById('appPage').style.display = 'none';
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('verifyResult').innerHTML = '';
+    document.getElementById('queryResult').innerHTML = '';
+    document.getElementById('verifyCodeInput').value = '';
+  }
+
+  function showApp() {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('appPage').style.display = 'block';
+    document.getElementById('staffName').textContent = currentStaff.name;
+    var rb = document.getElementById('staffRole');
+    rb.textContent = currentStaff.role;
+    rb.className = 'role-badge ' + currentStaff.role;
+
+    // 角色控制
+    var role = currentStaff.role;
+    var waNav = document.querySelector('.nav-item[data-panel="whatsapp"]');
+    var queryNav = document.querySelector('.nav-item[data-panel="query"]');
+    if (role === 'Staff') {
+      waNav.style.display = 'none';
+      queryNav.style.display = '';
+    } else {
+      waNav.style.display = '';
+      queryNav.style.display = '';
+    }
+
+    switchTab('verify');
+  }
+
+  // ===== Tab 切换 =====
+  function switchTab(name) {
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+    document.getElementById('panel-' + name).classList.add('active');
+    var navBtn = document.querySelector('.nav-item[data-panel="' + name + '"]');
+    if (navBtn) navBtn.classList.add('active');
+
+    if (name === 'whatsapp') loadWAList();
+  }
+
+  // ===== 验票功能 =====
+  function doQueryCode() {
+    var code = document.getElementById('verifyCodeInput').value.trim().toUpperCase();
+    if (!code) { showToast('请输入验证码', 'error'); return; }
+
+    showLoading();
+    google.script.run.withSuccessHandler(function(r) {
+      hideLoading();
+      renderVerifyResult(r);
+    }).withFailureHandler(function() {
+      hideLoading();
+      showToast('查询失败', 'error');
+    }).queryCode(code);
+  }
+
+  function renderVerifyResult(r) {
+    var div = document.getElementById('verifyResult');
+    if (!r.found) {
+      div.innerHTML = '<div class="verify-result error"><div class="result-title">\u274C \u9A8C\u8BC1\u7801\u4E0D\u5B58\u5728</div></div>';
+      currentCode = null;
+      return;
+    }
+
+    var cls = 'valid', icon = '\u2705', title = '\u53EF\u4EE5\u6838\u9500';
+    if (r.status === '\u5DF2\u6838\u9500') { cls = 'warning'; icon = '\u26A0\uFE0F'; title = '\u5DF2\u6838\u9500'; }
+    else if (r.status === '\u5DF2\u8FC7\u671F') { cls = 'error'; icon = '\u274C'; title = '\u5DF2\u8FC7\u671F'; }
+
+    var html = '<div class="verify-result ' + cls + '">';
+    html += '<div class="result-title">' + icon + ' ' + esc(title) + '</div>';
+    html += '<div class="detail-row"><span class="detail-label">\u5956\u54C1</span><span class="detail-value">' + esc(r.prize) + '</span></div>';
+    html += '<div class="detail-row"><span class="detail-label">\u9A8C\u8BC1\u7801</span><span class="detail-value" style="font-family:monospace;">' + esc(r.code) + '</span></div>';
+    html += '<div class="detail-row"><span class="detail-label">\u624B\u673A</span><span class="detail-value">' + esc(r.phone) + '</span></div>';
+    html += '<div class="detail-row"><span class="detail-label">\u6709\u6548\u671F</span><span class="detail-value">' + esc(r.expiryDate) + '</span></div>';
+    html += '<div class="detail-row"><span class="detail-label">\u62BD\u5956\u65F6\u95F4</span><span class="detail-value">' + esc(r.drawTime) + '</span></div>';
+
+    if (r.status === '\u5DF2\u6838\u9500') {
+      html += '<div class="detail-row"><span class="detail-label">\u6838\u9500\u65F6\u95F4</span><span class="detail-value">' + esc(r.verifyTime) + '</span></div>';
+      html += '<div class="detail-row"><span class="detail-label">\u6838\u9500\u5458</span><span class="detail-value">' + esc(r.verifyBy) + '</span></div>';
+    }
+
+    if (r.status === '\u672A\u6838\u9500') {
+      currentCode = r.code;
+      html += '<button class="action-btn success" style="margin-top:12px;" onclick="doConfirmVerify()">\u2705 \u786E\u8BA4\u6838\u9500</button>';
+    } else {
+      currentCode = null;
+    }
+
+    html += '</div>';
+    div.innerHTML = html;
+  }
+
+  function doConfirmVerify() {
+    if (!currentCode) return;
+    if (!confirm('\u786E\u8BA4\u6838\u9500\u6B64\u9A8C\u8BC1\u7801\uFF1F')) return;
+
+    showLoading();
+    google.script.run.withSuccessHandler(function(r) {
+      hideLoading();
+      if (checkSession(r)) return;
+      if (r.success) {
+        showToast('\u6838\u9500\u6210\u529F\uFF01\u8BF7\u53D1\u653E: ' + r.prize, 'success');
+        document.getElementById('verifyResult').innerHTML = '';
+        document.getElementById('verifyCodeInput').value = '';
+        currentCode = null;
+      } else {
+        showToast(r.message, 'error');
+      }
+    }).withFailureHandler(function() {
+      hideLoading();
+      showToast('\u6838\u9500\u5931\u8D25', 'error');
+    }).verifyCode(currentCode, sessionToken);
+  }
+
+  // ===== WhatsApp 功能 =====
+  function loadWAList() {
+    google.script.run.withSuccessHandler(function(r) {
+      waData = r.records || [];
+      document.getElementById('waCount').textContent = '\u5F85\u53D1\u9001: ' + r.pending + ' | \u5DF2\u53D1\u9001: ' + r.sent;
+      renderWAList();
+    }).withFailureHandler(function() {
+      document.getElementById('waList').innerHTML = '<div class="empty-state">\u52A0\u8F7D\u5931\u8D25</div>';
+    }).getWAList(waFilter);
+  }
+
+  function renderWAList() {
+    var div = document.getElementById('waList');
+    if (waData.length === 0) {
+      div.innerHTML = '<div class="empty-state">\u6682\u65E0\u8BB0\u5F55</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < waData.length; i++) {
+      var r = waData[i];
+      var btnClass = r.waStatus === '\u5F85\u53D1\u9001' ? 'wa-send-btn' : 'wa-send-btn wa-resend-btn';
+      var btnText = r.waStatus === '\u5F85\u53D1\u9001' ? '\u{1F4E4} \u53D1\u9001' : '\u{1F504} \u91CD\u53D1';
+      html += '<div class="wa-item">';
+      html += '<div class="wa-item-header"><span class="wa-code">' + esc(r.code) + '</span><span class="status ' + (r.waStatus === '\u5DF2\u53D1\u9001' ? 'sent' : 'pending') + '">' + esc(r.waStatus) + '</span></div>';
+      html += '<div class="wa-item-info">' + esc(r.prize) + ' | ' + esc(r.phone) + '<br>' + esc(r.drawTime) + '</div>';
+      html += '<button class="' + btnClass + '" onclick="sendWAByIdx(' + i + ')">' + btnText + '</button>';
+      html += '</div>';
+    }
+    div.innerHTML = html;
+  }
+
+  function filterWA(f, btn) {
+    waFilter = f;
+    document.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
+    btn.classList.add('active');
+    loadWAList();
+  }
+
+  function sendWAByIdx(idx) {
+    var r = waData[idx];
+    if (!r) return;
+    showLoading();
+    google.script.run.withSuccessHandler(function(res) {
+      hideLoading();
+      if (checkSession(res)) return;
+      if (res.success) {
+        window.open(res.waLink, '_blank');
+        loadWAList();
+      } else {
+        showToast(res.message, 'error');
+      }
+    }).withFailureHandler(function() {
+      hideLoading();
+      showToast('\u53D1\u9001\u5931\u8D25', 'error');
+    }).sendWhatsAppByCode(r.code, sessionToken);
+  }
+
+  function doManualSendWA() {
+    var code = document.getElementById('waCodeInput').value.trim().toUpperCase();
+    if (!code) { showToast('\u8BF7\u8F93\u5165\u9A8C\u8BC1\u7801', 'error'); return; }
+    showLoading();
+    google.script.run.withSuccessHandler(function(res) {
+      hideLoading();
+      if (checkSession(res)) return;
+      if (res.success) {
+        window.open(res.waLink, '_blank');
+        document.getElementById('waCodeInput').value = '';
+        loadWAList();
+      } else {
+        showToast(res.message, 'error');
+      }
+    }).withFailureHandler(function() {
+      hideLoading();
+      showToast('\u53D1\u9001\u5931\u8D25', 'error');
+    }).sendWhatsAppByCode(code, sessionToken);
+  }
+
+  // ===== 查询功能 =====
+  function doQueryUser() {
+    var phone = document.getElementById('queryPhone').value.trim();
+    if (!phone) { showToast('\u8BF7\u8F93\u5165\u624B\u673A\u53F7', 'error'); return; }
+
+    showLoading();
+    google.script.run.withSuccessHandler(function(r) {
+      hideLoading();
+      if (!r.success) { showToast(r.message || '\u672A\u627E\u5230\u8BE5\u7528\u6237', 'error'); document.getElementById('queryResult').innerHTML = ''; return; }
+      renderQueryResult(r);
+    }).withFailureHandler(function() {
+      hideLoading();
+      showToast('\u67E5\u8BE2\u5931\u8D25', 'error');
+    }).queryUserPrizes(formatPhone(phone));
+  }
+
+  function renderQueryResult(r) {
+    var div = document.getElementById('queryResult');
+    var u = r.user;
+    var html = '';
+
+    // 用户卡片
+    html += '<div class="user-card">';
+    html += '<div class="user-name">' + esc(u.name || '\u672A\u547D\u540D') + '</div>';
+    html += '<div class="user-phone">' + esc(u.phone) + '</div>';
+    html += '<div class="user-stats">';
+    html += '<div class="user-stat"><div class="stat-num">' + (u.points || 0) + '</div><div class="stat-label">\u79EF\u5206</div></div>';
+    html += '<div class="user-stat"><div class="stat-num">' + (u.todayDraws || 0) + '/3</div><div class="stat-label">\u4ECA\u65E5\u62BD\u5956</div></div>';
+    html += '<div class="user-stat"><div class="stat-num">' + (r.prizes ? r.prizes.length : 0) + '</div><div class="stat-label">\u5956\u54C1\u6570</div></div>';
+    html += '</div></div>';
+
+    // 奖品列表
+    if (r.prizes && r.prizes.length > 0) {
+      for (var i = 0; i < r.prizes.length; i++) {
+        var p = r.prizes[i];
+        var sc = p.status === '\u5DF2\u6838\u9500' ? 'verified' : (p.status === '\u5DF2\u8FC7\u671F' ? 'expired' : 'pending');
+        var st = p.status === '\u5DF2\u6838\u9500' ? '\u2705\u5DF2\u9886\u53D6' : (p.status === '\u5DF2\u8FC7\u671F' ? '\u274C\u5DF2\u8FC7\u671F' : '\u23F3\u672A\u9886\u53D6');
+        html += '<div class="prize-item">';
+        html += '<div class="prize-header"><span class="prize-name">' + esc(p.prize) + '</span><span class="status ' + sc + '">' + st + '</span></div>';
+        html += '<div class="prize-detail">\u9A8C\u8BC1\u7801: ' + esc(p.code) + ' | \u6709\u6548\u671F: ' + esc(p.expiryDate) + '</div>';
+        html += '</div>';
+      }
+    } else {
+      html += '<div class="empty-state">\u6682\u65E0\u5956\u54C1\u8BB0\u5F55</div>';
+    }
+
+    div.innerHTML = html;
+  }
+
+  // ===== QR 扫码 =====
+  function startQRScanner(mode) {
+    scannerMode = mode;
+    document.getElementById('qrOverlay').classList.add('show');
+
+    try {
+      qrScanner = new Html5Qrcode('qr-reader');
+      qrScanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        function() {}
+      ).catch(function(err) {
+        alert('\u65E0\u6CD5\u542F\u52A8\u6444\u50CF\u5934: ' + err);
+        stopQRScanner();
+      });
+    } catch(e) {
+      alert('\u6444\u50CF\u5934\u521D\u59CB\u5316\u5931\u8D25');
+      stopQRScanner();
+    }
+  }
+
+  function onScanSuccess(decodedText) {
+    stopQRScanner();
+    var code = decodedText.trim().toUpperCase();
+
+    if (scannerMode === 'verify') {
+      document.getElementById('verifyCodeInput').value = code;
+      doQueryCode();
+    } else if (scannerMode === 'whatsapp') {
+      document.getElementById('waCodeInput').value = code;
+      showToast('\u5DF2\u626B\u5165: ' + code, 'success');
+    }
+  }
+
+  function stopQRScanner() {
+    document.getElementById('qrOverlay').classList.remove('show');
+    if (qrScanner) {
+      try { qrScanner.stop().then(function() { qrScanner.clear(); }).catch(function() {}); } catch(e) {}
+      qrScanner = null;
+    }
+  }
+
+  // ===== 初始化 =====
+  google.script.run.withSuccessHandler(function(v) {
+    document.getElementById('versionInfo').textContent = v;
+  }).getAppVersion();
+
+  // 刷新恢复登录状态
+  try {
+    var saved = sessionStorage.getItem('mobileSession');
+    if (saved) {
+      var s = JSON.parse(saved);
+      if (s.staff && s.token) {
+        currentStaff = s.staff;
+        sessionToken = s.token;
+        showApp();
+      }
+    }
+  } catch(e) {}
+
+  // 回车键登录
+  document.getElementById('password').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') doLogin();
+  });
+</script>
+</body>
+</html>

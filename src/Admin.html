@@ -447,14 +447,56 @@
 
   <script>
     var currentStaff = null;
+    var sessionToken = null;
     var currentCode = null;
     var recordFilter = 'all';
     var waFilter = 'pending';
+
+    // XSS防护：HTML转义
+    function esc(s) {
+      if (s == null) return '';
+      var d = document.createElement('div');
+      d.appendChild(document.createTextNode(String(s)));
+      return d.innerHTML;
+    }
+
+    // 前端缓存+防抖
+    var dataCache = {};
+    var CACHE_TTL = 30000; // 30秒缓存
+    function getCached(key) {
+      var c = dataCache[key];
+      if (c && (Date.now() - c.time < CACHE_TTL)) return c.data;
+      return null;
+    }
+    function setCache(key, data) {
+      dataCache[key] = { data: data, time: Date.now() };
+    }
+    function clearCache(key) {
+      if (key) delete dataCache[key]; else dataCache = {};
+    }
+    var debounceTimers = {};
+    function debounce(key, fn, delay) {
+      if (debounceTimers[key]) clearTimeout(debounceTimers[key]);
+      debounceTimers[key] = setTimeout(fn, delay || 300);
+    }
     
     // 加载版本号
     google.script.run.withSuccessHandler(function(v) {
       document.getElementById('versionInfo').textContent = '系统版本: ' + v;
     }).getAppVersion();
+
+    // 刷新恢复登录状态
+    try {
+      var saved = sessionStorage.getItem('adminSession');
+      if (saved) {
+        var s = JSON.parse(saved);
+        if (s.staff && s.token) {
+          currentStaff = s.staff;
+          sessionToken = s.token;
+          showAdminPage();
+        }
+      }
+    } catch(e) {}
 
     // Tab切换
     document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -489,7 +531,9 @@
         btn.textContent = '登 录';
         if (r.success) {
           currentStaff = r.staff;
+          sessionToken = r.sessionToken || null;
           if (r.version) document.getElementById('headerVersion').textContent = r.version;
+          try { sessionStorage.setItem('adminSession', JSON.stringify({ staff: currentStaff, token: sessionToken })); } catch(e) {}
           showAdminPage();
         } else {
           document.getElementById('loginError').textContent = r.message || '账号或密码错误';
@@ -534,6 +578,8 @@
     
     function doLogout() {
       currentStaff = null;
+      sessionToken = null;
+      try { sessionStorage.removeItem('adminSession'); } catch(e) {}
       document.getElementById('loginPage').style.display = 'flex';
       document.getElementById('adminPage').style.display = 'none';
       document.getElementById('username').value = '';
@@ -541,14 +587,22 @@
       document.getElementById('loginError').style.display = 'none';
     }
     
-    // 统计
-    function loadStats() {
+    // 统计（带缓存）
+    function loadStats(force) {
+      if (!force) {
+        var cached = getCached('stats');
+        if (cached) { renderStats(cached); return; }
+      }
       google.script.run.withSuccessHandler(function(s) {
-        document.getElementById('statUsers').textContent = s.totalUsers || 0;
-        document.getElementById('statToday').textContent = s.todayDraws || 0;
-        document.getElementById('statPending').textContent = s.pending || 0;
-        document.getElementById('statWA').textContent = s.waPending || 0;
+        setCache('stats', s);
+        renderStats(s);
       }).getStatistics();
+    }
+    function renderStats(s) {
+      document.getElementById('statUsers').textContent = s.totalUsers || 0;
+      document.getElementById('statToday').textContent = s.todayDraws || 0;
+      document.getElementById('statPending').textContent = s.pending || 0;
+      document.getElementById('statWA').textContent = s.waPending || 0;
     }
     
     // 验票
@@ -573,21 +627,21 @@
         } else if (r.status === '已核销') {
           div.classList.add('warning');
           sta.textContent = '⚠️ 已核销';
-          info.innerHTML = '<div class="info-item"><label>奖品</label><span>' + r.prize + '</span></div>' +
-            '<div class="info-item"><label>核销时间</label><span>' + r.verifyTime + '</span></div>' +
-            '<div class="info-item"><label>核销员</label><span>' + r.verifyBy + '</span></div>';
+          info.innerHTML = '<div class="info-item"><label>奖品</label><span>' + esc(r.prize) + '</span></div>' +
+            '<div class="info-item"><label>核销时间</label><span>' + esc(r.verifyTime) + '</span></div>' +
+            '<div class="info-item"><label>核销员</label><span>' + esc(r.verifyBy) + '</span></div>';
         } else if (r.status === '已过期') {
           div.classList.add('error');
           sta.textContent = '❌ 验证码已过期';
-          info.innerHTML = '<div class="info-item"><label>奖品</label><span>' + r.prize + '</span></div>' +
-            '<div class="info-item"><label>有效期</label><span>' + r.expiryDate + '</span></div>';
+          info.innerHTML = '<div class="info-item"><label>奖品</label><span>' + esc(r.prize) + '</span></div>' +
+            '<div class="info-item"><label>有效期</label><span>' + esc(r.expiryDate) + '</span></div>';
         } else {
           div.classList.add('success');
           sta.textContent = '✅ 验证码有效';
-          info.innerHTML = '<div class="info-item"><label>🎁 奖品</label><span style="color:#2e7d32;font-size:16px;">' + r.prize + '</span></div>' +
-            '<div class="info-item"><label>👤 顾客</label><span>' + (r.name || r.phone) + '</span></div>' +
-            '<div class="info-item"><label>📱 手机</label><span>' + r.phone + '</span></div>' +
-            '<div class="info-item"><label>📅 有效期</label><span>' + r.expiryDate + '</span></div>';
+          info.innerHTML = '<div class="info-item"><label>🎁 奖品</label><span style="color:#2e7d32;font-size:16px;">' + esc(r.prize) + '</span></div>' +
+            '<div class="info-item"><label>👤 顾客</label><span>' + esc(r.name || r.phone) + '</span></div>' +
+            '<div class="info-item"><label>📱 手机</label><span>' + esc(r.phone) + '</span></div>' +
+            '<div class="info-item"><label>📅 有效期</label><span>' + esc(r.expiryDate) + '</span></div>';
           btn.style.display = 'block';
           currentCode = code;
         }
@@ -605,11 +659,12 @@
           document.getElementById('verifyResult').className = 'verify-result';
           document.getElementById('verifyBtn').style.display = 'none';
           currentCode = null;
-          loadStats();
+          clearCache();
+          loadStats(true);
         } else {
           alert('❌ ' + r.message);
         }
-      }).verifyCode(currentCode, currentStaff.name, currentStaff.role);
+      }).verifyCode(currentCode, sessionToken);
     }
     
     // 记录列表
@@ -636,11 +691,11 @@
         var sc = r.status === '已核销' ? 'verified' : (r.status === '已过期' ? 'expired' : 'pending');
         return '<div class="list-item">' +
           '<div class="main-info">' +
-            '<div class="title"><span class="code">' + r.code + '</span> ' + r.prize + '</div>' +
-            '<div class="subtitle">📱 ' + r.phone + (r.name ? ' · ' + r.name : '') + '</div>' +
-            '<div class="meta">抽奖: ' + r.drawTime + ' | 有效期: ' + r.expiryDate + (r.verifyTime ? ' | 核销: ' + r.verifyTime : '') + '</div>' +
+            '<div class="title"><span class="code">' + esc(r.code) + '</span> ' + esc(r.prize) + '</div>' +
+            '<div class="subtitle">📱 ' + esc(r.phone) + (r.name ? ' · ' + esc(r.name) : '') + '</div>' +
+            '<div class="meta">抽奖: ' + esc(r.drawTime) + ' | 有效期: ' + esc(r.expiryDate) + (r.verifyTime ? ' | 核销: ' + esc(r.verifyTime) : '') + '</div>' +
           '</div>' +
-          '<span class="status-badge ' + sc + '">' + r.status + '</span>' +
+          '<span class="status-badge ' + sc + '">' + esc(r.status) + '</span>' +
         '</div>';
       }).join('');
     }
@@ -669,15 +724,15 @@
       }
       list.innerHTML = records.map(function(r, idx) {
         var btn = '<button class="btn btn-sm btn-success" onclick="sendWAByIdx(' + idx + ')">' + (r.waStatus === '待发送' ? '📤发送' : '🔄重发') + '</button>';
-        var sentInfo = r.waStatus === '已发送' ? '<div style="color:#999;font-size:10px;margin-top:3px;">' + r.waSentTime + '</div>' : '';
+        var sentInfo = r.waStatus === '已发送' ? '<div style="color:#999;font-size:10px;margin-top:3px;">' + esc(r.waSentTime) + '</div>' : '';
         return '<div class="list-item">' +
           '<div class="main-info">' +
-            '<div class="title"><span class="code">' + r.code + '</span> ' + r.prize + '</div>' +
-            '<div class="subtitle">📱 ' + r.phone + '</div>' +
-            '<div class="meta">有效期: ' + r.expiryDate + '</div>' +
+            '<div class="title"><span class="code">' + esc(r.code) + '</span> ' + esc(r.prize) + '</div>' +
+            '<div class="subtitle">📱 ' + esc(r.phone) + '</div>' +
+            '<div class="meta">有效期: ' + esc(r.expiryDate) + '</div>' +
           '</div>' +
           '<div style="text-align:right;">' +
-            '<span class="status-badge ' + (r.waStatus === '已发送' ? 'sent' : 'pending') + '">' + r.waStatus + '</span><br>' +
+            '<span class="status-badge ' + (r.waStatus === '已发送' ? 'sent' : 'pending') + '">' + esc(r.waStatus) + '</span><br>' +
             '<div style="margin-top:5px;">' + btn + '</div>' +
             sentInfo +
           '</div>' +
@@ -691,12 +746,13 @@
       google.script.run.withSuccessHandler(function(res) {
         if (res.success) {
           window.open(res.waLink, '_blank');
+          clearCache();
           loadWAList();
-          loadStats();
+          loadStats(true);
         } else {
           alert('❌ ' + res.message);
         }
-      }).sendWhatsAppByCode(r.code, currentStaff.name, currentStaff.role);
+      }).sendWhatsAppByCode(r.code, sessionToken);
     }
 
     function manualSendWA() {
@@ -711,7 +767,7 @@
         } else {
           alert('❌ ' + r.message);
         }
-      }).sendWhatsAppByCode(code, currentStaff.name, currentStaff.role);
+      }).sendWhatsAppByCode(code, sessionToken);
     }
 
     // WA模板
@@ -747,9 +803,9 @@
         list.innerHTML = reminders.map(function(r, idx) {
           return '<div class="list-item">' +
             '<div class="main-info">' +
-              '<div class="title"><span class="code">' + r.code + '</span> ' + r.prize + '</div>' +
-              '<div class="subtitle">📱 ' + r.phone + '</div>' +
-              '<div class="meta">⚠️ 到期: ' + r.expiry + '</div>' +
+              '<div class="title"><span class="code">' + esc(r.code) + '</span> ' + esc(r.prize) + '</div>' +
+              '<div class="subtitle">📱 ' + esc(r.phone) + '</div>' +
+              '<div class="meta">⚠️ 到期: ' + esc(r.expiry) + '</div>' +
             '</div>' +
             '<div style="text-align:right;">' +
               '<button class="btn btn-sm" style="background:#ff9800;color:#fff;" onclick="sendExpiryByIdx(' + idx + ')">⏰ 发送提醒</button>' +
@@ -792,8 +848,8 @@
           var probColor = prob === '-' ? '#999' : (parseFloat(prob) >= 20 ? '#2e7d32' : (parseFloat(prob) >= 10 ? '#e65100' : '#8b0000'));
           return '<tr data-row="' + p.row + '">' +
             '<td style="font-weight:bold;color:#8b0000;">' + (i + 1) + '</td>' +
-            '<td><input type="text" class="p-icon" value="' + p.icon + '" style="width:50px;text-align:center;font-size:18px;"></td>' +
-            '<td><input type="text" class="p-name" value="' + p.name + '" style="min-width:140px;"></td>' +
+            '<td><input type="text" class="p-icon" value="' + esc(p.icon) + '" style="width:50px;text-align:center;font-size:18px;"></td>' +
+            '<td><input type="text" class="p-name" value="' + esc(p.name) + '" style="min-width:140px;"></td>' +
             '<td><input type="number" class="p-stock" value="' + p.totalStock + '" style="width:65px;"></td>' +
             '<td style="text-align:center;">' + p.usedStock + '</td>' +
             '<td style="color:' + (p.remaining <= 5 ? 'red' : 'green') + ';font-weight:bold;text-align:center;font-size:16px;">' + p.remaining + '</td>' +
@@ -857,11 +913,11 @@
         list.innerHTML = staff.map(function(s, idx) {
           return '<div class="list-item" style="flex-wrap:wrap;">' +
             '<div class="main-info">' +
-              '<div class="title">' + s.name + ' <small style="color:#999;">@' + s.username + '</small></div>' +
-              '<div class="meta">最后登录: ' + s.lastLogin + '</div>' +
+              '<div class="title">' + esc(s.name) + ' <small style="color:#999;">@' + esc(s.username) + '</small></div>' +
+              '<div class="meta">最后登录: ' + esc(s.lastLogin) + '</div>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:8px;">' +
-              '<span class="role-badge ' + s.role + '">' + s.role + '</span>' +
+              '<span class="role-badge ' + esc(s.role) + '">' + esc(s.role) + '</span>' +
               '<button class="btn btn-sm" style="background:#2196f3;color:#fff;" onclick="editStaffByIdx(' + idx + ')">✏️</button>' +
               '<button class="btn btn-sm" style="background:#f44336;color:#fff;" onclick="deleteStaffByIdx(' + idx + ')">🗑️</button>' +
             '</div>' +
@@ -1056,7 +1112,8 @@
           '<b>🎁 奖品分布:</b><br>' + prizeList + '<br>' +
           (r.errors.length > 0 ? '<hr style="margin:10px 0;"><b>❌ 错误:</b><br><span style="color:#c62828;font-size:12px;">' + errorList + '</span>' : '');
 
-        loadDashboard(); // 刷新统计
+        clearCache();
+        loadDashboard(true); // 刷新统计
       }).withFailureHandler(function(e) {
         btn.disabled = false; btn.textContent = '🚀 开始测试 (100人)';
         result.innerHTML = '<span style="color:#c62828;">❌ 测试失败: ' + e + '</span>';
@@ -1069,7 +1126,8 @@
       google.script.run.withSuccessHandler(function(msg) {
         btn.disabled = false; btn.textContent = '🧹 清理测试数据';
         alert(msg);
-        loadDashboard();
+        clearCache();
+        loadDashboard(true);
       }).withFailureHandler(function(e) {
         btn.disabled = false; btn.textContent = '🧹 清理测试数据';
         alert('清理失败: ' + e);
@@ -1077,8 +1135,17 @@
     }
 
     // ==================== 统计面板 ====================
-    function loadDashboard() {
+    function loadDashboard(force) {
+      if (!force) {
+        var cached = getCached('dashboard');
+        if (cached) { renderDashboard(cached); return; }
+      }
       google.script.run.withSuccessHandler(function(s) {
+        setCache('dashboard', s);
+        renderDashboard(s);
+      }).withFailureHandler(function() {}).getDetailedStats();
+    }
+    function renderDashboard(s) {
         // 今日概览
         document.getElementById('dsTodayUsers').textContent = s.todayNewUsers;
         document.getElementById('dsTodayDraws').textContent = s.todayDraws;
@@ -1095,7 +1162,6 @@
 
         // 奖品统计
         renderPrizeChart(s.prizeStats);
-      }).withFailureHandler(function() {}).getDetailedStats();
     }
 
     function renderBarChart(dates, draws, users) {
@@ -1149,7 +1215,7 @@
         var bg = i % 2 === 0 ? '#fff' : '#fafafa';
         var off = p.status === '停用';
         html += '<tr style="background:' + bg + ';' + (off ? 'opacity:0.5;' : '') + '">' +
-          '<td style="padding:10px;border-bottom:1px solid #f0f0f0;white-space:nowrap;">' + p.icon + ' ' + p.name + (off ? ' <span style="color:#999;font-size:11px;">(停)</span>' : '') + '</td>' +
+          '<td style="padding:10px;border-bottom:1px solid #f0f0f0;white-space:nowrap;">' + esc(p.icon) + ' ' + esc(p.name) + (off ? ' <span style="color:#999;font-size:11px;">(停)</span>' : '') + '</td>' +
           '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;font-weight:bold;">' + p.used + '</td>' +
           '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;color:#666;">' + p.total + '</td>' +
           '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;font-weight:bold;color:' + remColor + ';">' + p.remaining + '</td>' +

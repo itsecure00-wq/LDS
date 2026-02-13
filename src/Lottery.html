@@ -141,7 +141,7 @@
         <li>📤 分享链接给朋友，朋友登记后您获得 <b style="color:#ffd700">1积分</b></li>
         <li>🔄 每日最多抽奖 <b style="color:#ffd700">3次</b>，每次消耗1积分</li>
         <li>⏰ 积分有效期 <b style="color:#ffd700">30天</b>，过期自动清零</li>
-        <li>📱 验证码将在24小时内通过 <b style="color:#25D366">WhatsApp</b> 发送</li>
+        <li>📱 验证码将通过 <b style="color:#25D366">WhatsApp</b> 发送（请留意消息）</li>
         <li>🍽️ 奖品仅限 <b style="color:#ffd700">周一至周四堂食</b> 使用</li>
         <li>🧾 每张收据限兑换 <b style="color:#ffd700">1份</b> 奖品</li>
         <li>📅 验证码有效期 <b style="color:#ffd700">30天</b></li>
@@ -160,7 +160,7 @@
       </div>
     </div>
     
-    <div class="disclaimer">© 2026 张崇会火锅 · 活动期间：2026年1月15日 - 2月28日</div>
+    <div class="disclaimer">© 2026 张崇会火锅 · 活动自2026年2月起</div>
   </div>
   
   <!-- 登记弹窗 -->
@@ -186,7 +186,7 @@
       <span class="prize-icon" id="resultIcon">🎁</span>
       <div class="prize-name" id="resultPrize">奖品名称</div>
       <div class="notice-box">
-        <p>📱 验证码将在 <span class="highlight">24小时内</span> 通过WhatsApp发送</p>
+        <p>📱 验证码将通过 <span class="highlight">WhatsApp</span> 发送，请留意消息</p>
         <p>📅 有效期至：<span class="highlight" id="resultExpiry">2026年3月1日</span></p>
         <p>🍽️ 仅限 <span class="highlight">周一至周四堂食</span> 使用</p>
         <p>🧾 每张收据限兑换 <span class="highlight">1份</span> 奖品</p>
@@ -259,6 +259,8 @@
     var currentUser = null, isSpinning = false, referrerCode = '', deploymentUrl = '', musicPlaying = false;
     var bgMusicUrl = '', firecrackerUrl = '', bgAudio = null;
 
+    function esc(s) { if (s == null) return ''; var d = document.createElement('div'); d.appendChild(document.createTextNode(String(s))); return d.innerHTML; }
+
     // 随机打乱数组
     function shuffleArray(arr) {
       var a = arr.slice();
@@ -298,7 +300,7 @@
         var p = prizes[i];
         var cell = document.createElement('div');
         cell.className = 'prize-cell' + (p.isGrand ? ' grand' : '');
-        cell.innerHTML = '<span class="icon">' + p.icon + '</span><span class="name">' + p.name + '</span>';
+        cell.innerHTML = '<span class="icon">' + esc(p.icon) + '</span><span class="name">' + esc(p.name) + '</span>';
         grid.appendChild(cell);
       }
     }
@@ -494,7 +496,7 @@
     
     function shareToWhatsApp() {
       var code = currentUser ? currentUser.inviteCode : '';
-      var url = deploymentUrl + '?ref=' + code;
+      var url = 'https://tinyurl.com/HuiHotpotPermasJaya?ref=' + code;
       var text = '🧧【张崇会火锅 · 百万镇分店】\n\n🐴 马年新春抽奖活动！\n🎁 100%中奖！人人有奖！\n\n我刚抽中大奖，你也来试试运气！\n\n👇 点击链接立即参与：\n' + url;
       window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
     }
@@ -511,7 +513,7 @@
           list.innerHTML = r.prizes.map(function(p) {
             var sc = p.status === '已核销' ? '#4caf50' : (p.status === '已过期' ? '#999' : '#ff9800');
             var st = p.status === '已核销' ? '✅已领取' : (p.status === '已过期' ? '❌已过期' : '⏳未领取');
-            return '<div style="padding:8px;border-bottom:1px solid #eee;"><div style="display:flex;justify-content:space-between;"><b>' + p.prize + '</b><span style="color:' + sc + ';font-size:11px;">' + st + '</span></div><div style="font-size:10px;color:#666;">有效期: ' + p.expiryDate + '</div></div>';
+            return '<div style="padding:8px;border-bottom:1px solid #eee;"><div style="display:flex;justify-content:space-between;"><b>' + esc(p.prize) + '</b><span style="color:' + sc + ';font-size:11px;">' + st + '</span></div><div style="font-size:10px;color:#666;">有效期: ' + esc(p.expiryDate) + '</div></div>';
           }).join('');
         } else { list.innerHTML = '<p style="color:#999;text-align:center;">暂无奖品</p>'; }
         document.getElementById('queryResult').style.display = 'block';
