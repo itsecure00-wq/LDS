@@ -198,6 +198,21 @@
         <div id="queryResult"></div>
       </div>
 
+      <!-- 到期提醒 -->
+      <div class="panel" id="panel-expiry">
+        <div class="card">
+          <h3>⏰ 即将过期（7天内）</h3>
+          <div class="filter-row">
+            <button class="filter-chip active" onclick="filterMobileExpiry('all', this)">全部</button>
+            <button class="filter-chip" onclick="filterMobileExpiry('prize', this)">🎫 奖品</button>
+            <button class="filter-chip" onclick="filterMobileExpiry('points', this)">💰 积分</button>
+          </div>
+          <button class="action-btn primary" onclick="loadMobileExpiry()" style="margin-bottom:10px;">🔍 刷新列表</button>
+        </div>
+        <div id="mExpirySummary"></div>
+        <div id="mExpiryList"><div class="empty-state">点击上方按钮检查</div></div>
+      </div>
+
       <!-- 积分 -->
       <div class="panel" id="panel-points">
         <div class="card">
@@ -232,6 +247,10 @@
       <button class="nav-item" data-panel="query" onclick="switchTab('query')">
         <span class="nav-icon">🔍</span>
         <span class="nav-label">查询</span>
+      </button>
+      <button class="nav-item" data-panel="expiry" onclick="switchTab('expiry')">
+        <span class="nav-icon">⏰</span>
+        <span class="nav-label">提醒</span>
       </button>
       <button class="nav-item" data-panel="points" onclick="switchTab('points')">
         <span class="nav-icon">💰</span>
@@ -337,20 +356,24 @@
     var role = currentStaff.role;
     var waNav = document.querySelector('.nav-item[data-panel="whatsapp"]');
     var queryNav = document.querySelector('.nav-item[data-panel="query"]');
+    var expiryNav = document.querySelector('.nav-item[data-panel="expiry"]');
     var pointsNav = document.querySelector('.nav-item[data-panel="points"]');
     if (role === 'Staff') {
       waNav.style.display = 'none';
       queryNav.style.display = '';
+      expiryNav.style.display = 'none';
       pointsNav.style.display = 'none';
     } else if (role === 'Manager') {
       waNav.style.display = '';
       queryNav.style.display = '';
+      expiryNav.style.display = '';
       pointsNav.style.display = '';
       // Manager 隐藏全员加积分
       document.getElementById('mPtAllCard').style.display = 'none';
     } else {
       waNav.style.display = '';
       queryNav.style.display = '';
+      expiryNav.style.display = '';
       pointsNav.style.display = '';
     }
 
@@ -366,6 +389,7 @@
     if (navBtn) navBtn.classList.add('active');
 
     if (name === 'whatsapp') loadWAList();
+    if (name === 'expiry') loadMobileExpiry();
   }
 
   // ===== 验票功能 =====
@@ -601,6 +625,83 @@
       hideLoading();
       showToast('发送失败', 'error');
     }).sendWhatsAppByCode(code, sessionToken);
+  }
+
+  // ===== 到期提醒 =====
+  var mExpiryAlerts = [];
+  var mExpiryFilter = 'all';
+
+  function loadMobileExpiry() {
+    var list = document.getElementById('mExpiryList');
+    list.innerHTML = '<div class="empty-state">检查中...</div>';
+    document.getElementById('mExpirySummary').innerHTML = '';
+
+    google.script.run.withSuccessHandler(function(r) {
+      if (checkSession(r)) return;
+      if (!r.success) { list.innerHTML = '<div class="empty-state">' + esc(r.message) + '</div>'; return; }
+      mExpiryAlerts = r.alerts || [];
+      if (mExpiryAlerts.length === 0) {
+        list.innerHTML = '<div class="empty-state">暂无7天内即将过期的积分或奖品</div>';
+        return;
+      }
+      // 统计摘要
+      var prizeC = 0, pointsC = 0;
+      mExpiryAlerts.forEach(function(a) { if (a.type === 'prize') prizeC++; else pointsC++; });
+      document.getElementById('mExpirySummary').innerHTML =
+        '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+          '<div style="flex:1;background:#fff3e0;border:2px solid #ff9800;border-radius:10px;padding:10px;text-align:center;">' +
+            '<div style="font-size:22px;font-weight:bold;color:#e65100;">' + prizeC + '</div><div style="font-size:11px;color:#666;">🎫 奖品</div>' +
+          '</div>' +
+          '<div style="flex:1;background:#e3f2fd;border:2px solid #2196f3;border-radius:10px;padding:10px;text-align:center;">' +
+            '<div style="font-size:22px;font-weight:bold;color:#1565c0;">' + pointsC + '</div><div style="font-size:11px;color:#666;">💰 积分</div>' +
+          '</div>' +
+        '</div>';
+      mExpiryFilter = 'all';
+      renderMobileExpiry();
+    }).withFailureHandler(function() {
+      list.innerHTML = '<div class="empty-state">检查失败</div>';
+    }).getExpiryAlerts(sessionToken);
+  }
+
+  function filterMobileExpiry(type, btn) {
+    mExpiryFilter = type;
+    document.querySelectorAll('#panel-expiry .filter-chip').forEach(function(c) { c.classList.remove('active'); });
+    btn.classList.add('active');
+    renderMobileExpiry();
+  }
+
+  function renderMobileExpiry() {
+    var list = document.getElementById('mExpiryList');
+    var filtered = mExpiryAlerts.filter(function(a) {
+      return mExpiryFilter === 'all' || a.type === mExpiryFilter;
+    });
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty-state">暂无此类到期提醒</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+      var a = filtered[i];
+      var realIdx = mExpiryAlerts.indexOf(a);
+      var daysText = a.daysLeft === 0 ? '今天到期!' : a.daysLeft + '天后';
+      var urgColor = a.daysLeft <= 1 ? '#f44336' : '#ff9800';
+      var icon = a.type === 'prize' ? '🎫' : '💰';
+      var title = a.type === 'prize' ? esc(a.prize) : (a.points + ' 积分过期');
+      var codeStr = a.code ? '<span style="font-family:monospace;color:#8b0000;background:#fff0f0;padding:2px 6px;border-radius:4px;">' + esc(a.code) + '</span> ' : '';
+      html += '<div class="wa-item">';
+      html += '<div class="wa-item-header"><span>' + icon + ' ' + codeStr + title + '</span><span style="color:' + urgColor + ';font-weight:bold;font-size:12px;">' + daysText + '</span></div>';
+      html += '<div class="wa-item-info">' + esc(a.phone) + (a.name ? ' · ' + esc(a.name) : '') + '<br>到期: ' + esc(a.expiry) + '</div>';
+      html += '<button class="wa-send-btn" style="background:#25D366;" onclick="sendMobileExpiry(' + realIdx + ')">📤 发送提醒</button>';
+      html += '</div>';
+    }
+    list.innerHTML = html;
+  }
+
+  function sendMobileExpiry(idx) {
+    var a = mExpiryAlerts[idx];
+    if (!a || !a.waLink) return;
+    window.open(a.waLink, '_blank');
+    showToast('已打开WhatsApp', 'success');
   }
 
   // ===== 积分管理 =====

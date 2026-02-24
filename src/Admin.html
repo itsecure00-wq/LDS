@@ -157,6 +157,7 @@
       <button class="tab-btn" data-tab="verify">🎫 验票</button>
       <button class="tab-btn" data-tab="records">📋 记录</button>
       <button class="tab-btn" data-tab="whatsapp" data-role="Manager,Boss,Admin">📱 WhatsApp</button>
+      <button class="tab-btn" data-tab="expiry" data-role="Manager,Boss,Admin">⏰ 到期</button>
       <button class="tab-btn" data-tab="customer" data-role="Manager,Boss,Admin">🔍 查询</button>
       <button class="tab-btn" data-tab="points" data-role="Boss,Admin">💰 积分</button>
       <button class="tab-btn" data-tab="prizes" data-role="Boss,Admin">🎁 奖品</button>
@@ -298,14 +299,6 @@
         </div>
         <button class="btn btn-primary btn-block" onclick="saveWATemplates()">💾 保存模板</button>
       </div>
-      <div class="card">
-        <h3>⏰ 到期提醒（7天内到期）</h3>
-        <button class="btn btn-block" onclick="checkExpiryReminders()" style="margin-bottom:10px;">🔍 检查到期提醒</button>
-        <div class="data-list" id="expiryReminderList"><div class="empty-state"><div class="icon">⏰</div><p>点击上方按钮检查</p></div></div>
-        <div style="margin-top:10px;">
-          <button class="btn btn-sm" onclick="setupTrigger()" style="background:#666;">⚙️ 设置每日自动检查</button>
-        </div>
-      </div>
     </div>
     
     <!-- 奖品设置 -->
@@ -398,6 +391,22 @@
       </div>
     </div>
     
+    <!-- 到期提醒 -->
+    <div class="tab-content" id="tab-expiry">
+      <div class="card">
+        <h3>⏰ 即将过期提醒（7天内）</h3>
+        <p style="font-size:12px;color:#666;margin-bottom:12px;">列出7天内即将过期的奖品验证码和积分，可逐一发送WhatsApp提醒顾客。</p>
+        <button class="btn btn-primary btn-block" onclick="loadExpiryAlerts()" style="margin-bottom:12px;">🔍 刷新列表</button>
+        <div id="expiryAlertSummary" style="display:none;margin-bottom:12px;"></div>
+        <div class="list-filter" id="expiryFilter" style="display:none;">
+          <button class="filter-btn active" onclick="filterExpiry('all',this)">全部</button>
+          <button class="filter-btn" onclick="filterExpiry('prize',this)">🎫 奖品</button>
+          <button class="filter-btn" onclick="filterExpiry('points',this)">💰 积分</button>
+        </div>
+        <div class="data-list" id="expiryAlertList" style="max-height:600px;"><div class="empty-state"><div class="icon">⏰</div><p>点击上方按钮检查</p></div></div>
+      </div>
+    </div>
+
     <!-- 顾客查询 -->
     <div class="tab-content" id="tab-customer">
       <div class="card">
@@ -544,6 +553,7 @@
         if (tab === 'dashboard') loadDashboard();
         if (tab === 'records') loadRecords();
         if (tab === 'whatsapp') { loadWAList(); loadWATemplates(); }
+        if (tab === 'expiry') loadExpiryAlerts();
         if (tab === 'prizes') loadPrizes();
         if (tab === 'staff') loadStaff();
         if (tab === 'music') loadMusicSettings();
@@ -824,46 +834,89 @@
     }
 
     // 到期提醒
-    var expiryData = [];
-    function checkExpiryReminders() {
-      var list = document.getElementById('expiryReminderList');
+    var expiryAlerts = [];
+    var expiryFilterType = 'all';
+
+    function loadExpiryAlerts() {
+      var list = document.getElementById('expiryAlertList');
       list.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>检查中...</p></div>';
-      google.script.run.withSuccessHandler(function(reminders) {
-        if (!reminders || reminders.length === 0) {
-          expiryData = [];
-          list.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>暂无7天内到期的未兑换奖品</p></div>';
+      document.getElementById('expiryAlertSummary').style.display = 'none';
+      document.getElementById('expiryFilter').style.display = 'none';
+
+      google.script.run.withSuccessHandler(function(r) {
+        if (!r.success) {
+          if (r.message && r.message.indexOf('会话已过期') >= 0) { doLogout(); return; }
+          list.innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>' + esc(r.message) + '</p></div>';
           return;
         }
-        expiryData = reminders;
-        list.innerHTML = reminders.map(function(r, idx) {
-          return '<div class="list-item">' +
-            '<div class="main-info">' +
-              '<div class="title"><span class="code">' + esc(r.code) + '</span> ' + esc(r.prize) + '</div>' +
-              '<div class="subtitle">📱 ' + esc(r.phone) + '</div>' +
-              '<div class="meta">⚠️ 到期: ' + esc(r.expiry) + '</div>' +
-            '</div>' +
-            '<div style="text-align:right;">' +
-              '<button class="btn btn-sm" style="background:#ff9800;color:#fff;" onclick="sendExpiryByIdx(' + idx + ')">⏰ 发送提醒</button>' +
-            '</div>' +
+        expiryAlerts = r.alerts || [];
+        if (expiryAlerts.length === 0) {
+          list.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>暂无7天内即将过期的积分或奖品</p></div>';
+          return;
+        }
+        // 统计
+        var prizeCount = 0, pointsCount = 0;
+        expiryAlerts.forEach(function(a) { if (a.type === 'prize') prizeCount++; else pointsCount++; });
+        var summary = document.getElementById('expiryAlertSummary');
+        summary.style.display = 'flex';
+        summary.style.cssText = 'display:flex;gap:10px;margin-bottom:12px;';
+        summary.innerHTML =
+          '<div style="flex:1;background:#fff3e0;border:2px solid #ff9800;border-radius:10px;padding:12px;text-align:center;">' +
+            '<div style="font-size:28px;font-weight:bold;color:#e65100;">' + prizeCount + '</div><div style="font-size:12px;color:#666;">🎫 奖品到期</div>' +
+          '</div>' +
+          '<div style="flex:1;background:#e3f2fd;border:2px solid #2196f3;border-radius:10px;padding:12px;text-align:center;">' +
+            '<div style="font-size:28px;font-weight:bold;color:#1565c0;">' + pointsCount + '</div><div style="font-size:12px;color:#666;">💰 积分到期</div>' +
           '</div>';
-        }).join('');
+        document.getElementById('expiryFilter').style.display = 'flex';
+        expiryFilterType = 'all';
+        document.querySelectorAll('#expiryFilter .filter-btn').forEach(function(b, i) { b.className = 'filter-btn' + (i === 0 ? ' active' : ''); });
+        renderExpiryAlerts();
       }).withFailureHandler(function() {
         list.innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>检查失败</p></div>';
-      }).sendExpiryReminders();
+      }).getExpiryAlerts(sessionToken);
     }
 
-    function sendExpiryByIdx(idx) {
-      var r = expiryData[idx];
-      if (!r || !r.waLink) return;
-      window.open(r.waLink, '_blank');
+    function filterExpiry(type, btn) {
+      expiryFilterType = type;
+      document.querySelectorAll('#expiryFilter .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      renderExpiryAlerts();
     }
 
-    function setupTrigger() {
-      google.script.run.withSuccessHandler(function(r) {
-        if (r.success) alert('✅ ' + r.message);
-      }).withFailureHandler(function() {
-        alert('❌ 设置失败');
-      }).setupExpiryReminderTrigger();
+    function renderExpiryAlerts() {
+      var list = document.getElementById('expiryAlertList');
+      var filtered = expiryAlerts.filter(function(a) {
+        return expiryFilterType === 'all' || a.type === expiryFilterType;
+      });
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>暂无此类到期提醒</p></div>';
+        return;
+      }
+      list.innerHTML = filtered.map(function(a, idx) {
+        var realIdx = expiryAlerts.indexOf(a);
+        var urgency = a.daysLeft <= 1 ? '#f44336' : (a.daysLeft <= 3 ? '#ff9800' : '#ff9800');
+        var daysText = a.daysLeft === 0 ? '今天到期!' : a.daysLeft + '天后到期';
+        var typeIcon = a.type === 'prize' ? '🎫' : '💰';
+        var typeLabel = a.type === 'prize' ? esc(a.prize) : (a.points + '积分即将过期');
+        var codeInfo = a.code ? '<span class="code">' + esc(a.code) + '</span> ' : '';
+
+        return '<div class="list-item">' +
+          '<div class="main-info">' +
+            '<div class="title">' + typeIcon + ' ' + codeInfo + typeLabel + '</div>' +
+            '<div class="subtitle">📱 ' + esc(a.phone) + (a.name ? ' · ' + esc(a.name) : '') + '</div>' +
+            '<div class="meta" style="color:' + urgency + ';font-weight:bold;">⚠️ ' + daysText + ' (' + esc(a.expiry) + ')</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<button class="btn btn-sm" style="background:#25D366;color:#fff;" onclick="sendExpiryAlert(' + realIdx + ')">📤 发提醒</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function sendExpiryAlert(idx) {
+      var a = expiryAlerts[idx];
+      if (!a || !a.waLink) return;
+      window.open(a.waLink, '_blank');
     }
 
     // 奖品

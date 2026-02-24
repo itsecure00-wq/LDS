@@ -102,7 +102,7 @@ Mobile.html 底部导航:
 ## 关键常量
 
 ```
-APP_VERSION        = v50
+APP_VERSION        = v52
 SESSION_EXPIRY     = 2小时 (CacheService TTL 7200秒)
 LOGIN_MAX_ATTEMPTS = 5次失败锁定15分钟
 POINTS_EXPIRY      = 30天
@@ -219,6 +219,8 @@ LOTTERY_COST       = 1分
 
 | 版本 | 部署 | 说明 |
 |------|------|------|
+| v52 | @65 | 到期提醒: 积分+奖品7天内过期列表 + WA提醒 |
+| v51 | @63 | FIFO积分90天独立过期 + 顾客查询 + 手动积分管理 |
 | v50 | @62 | 修复手机版权限 + 刷新保持登录 |
 | v49 | @59 | 新增 Mobile.html 移动管理端 |
 | v48 | @52 | 修复 registerUser cachedRecords |

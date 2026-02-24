@@ -4,7 +4,7 @@
  * 功能：15格抽奖、积分30天过期、防重复邀请、权限分级
  */
 
-var APP_VERSION = 'v51';
+var APP_VERSION = 'v52';
 var POINTS_EXPIRY_DAYS = 90;
 
 // ============ Web App 入口 ============
@@ -1183,6 +1183,100 @@ function sendExpiryReminders() {
   }
 
   return reminders;
+}
+
+// 获取即将过期的积分和奖品列表 (7天内)
+function getExpiryAlerts(sessionToken) {
+  var session = validateSession(sessionToken);
+  if (!session) return { success: false, message: '会话已过期，请重新登录' };
+  if (session.role === 'Staff') return { success: false, message: '无权限查看' };
+
+  var tz = 'Asia/Kuala_Lumpur';
+  var now = new Date();
+  var alerts = [];
+
+  // 1. 奖品验证码即将过期 (7天内到期 + 未核销)
+  var rsh = getSheet(SH.RECORDS);
+  var rd = rsh.getDataRange().getValues();
+  for (var i = 1; i < rd.length; i++) {
+    if (rd[i][10] !== '未核销') continue;
+    if (!rd[i][7]) continue;
+    var expiry = new Date(rd[i][7]);
+    var daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+    if (daysLeft >= 0 && daysLeft <= 7) {
+      var phone = String(rd[i][3]);
+      var prize = rd[i][5];
+      var code = rd[i][6];
+      var expiryStr = Utilities.formatDate(expiry, tz, 'yyyy-MM-dd');
+      var msg = buildWAMessage('reminder', prize, code, expiryStr);
+      alerts.push({
+        type: 'prize',
+        phone: phone,
+        name: rd[i][4] || '',
+        code: code,
+        prize: prize,
+        expiry: expiryStr,
+        daysLeft: daysLeft,
+        waLink: 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg)
+      });
+    }
+  }
+
+  // 2. 积分即将过期 (7天内到期 + 有剩余)
+  var psh = getSheet(SH.POINTS);
+  var pd = psh.getDataRange().getValues();
+  // 按用户合并: 同一用户多条积分快到期，合并成一条提醒
+  var userPoints = {};
+  for (var j = 1; j < pd.length; j++) {
+    var remaining = pd[j][5] || 0;
+    if (remaining <= 0) continue;
+    var pExpiry = pd[j][3] ? new Date(pd[j][3]) : null;
+    if (!pExpiry) continue;
+    var pDaysLeft = Math.ceil((pExpiry - now) / (1000 * 60 * 60 * 24));
+    if (pDaysLeft >= 0 && pDaysLeft <= 7) {
+      var pPhone = String(pd[j][1]);
+      if (!userPoints[pPhone]) {
+        userPoints[pPhone] = { totalExpiring: 0, earliestExpiry: pExpiry, daysLeft: pDaysLeft };
+      }
+      userPoints[pPhone].totalExpiring += remaining;
+      if (pExpiry < userPoints[pPhone].earliestExpiry) {
+        userPoints[pPhone].earliestExpiry = pExpiry;
+        userPoints[pPhone].daysLeft = pDaysLeft;
+      }
+    }
+  }
+
+  // 查找用户姓名
+  var ush = getSheet(SH.USERS);
+  var ud = ush.getDataRange().getValues();
+  var userNames = {};
+  for (var u = 1; u < ud.length; u++) {
+    userNames[String(ud[u][1])] = ud[u][2] || '';
+  }
+
+  for (var ph in userPoints) {
+    var info = userPoints[ph];
+    var expiryDate = Utilities.formatDate(info.earliestExpiry, tz, 'yyyy-MM-dd');
+    // 积分到期提醒WhatsApp模板
+    var ptMsg = '【张崇会火锅 · 温馨提醒】\n\n'
+      + '你有 *' + info.totalExpiring + '* 个积分即将在 *' + expiryDate + '* 过期哦！\n\n'
+      + '赶紧来抽奖使用吧，过期就作废了！\n\n'
+      + '>> 抽奖链接：tinyurl.com/HuiHotpotPermasJaya';
+    alerts.push({
+      type: 'points',
+      phone: ph,
+      name: userNames[ph] || '',
+      points: info.totalExpiring,
+      expiry: expiryDate,
+      daysLeft: info.daysLeft,
+      waLink: 'https://wa.me/' + ph + '?text=' + encodeURIComponent(ptMsg)
+    });
+  }
+
+  // 按剩余天数排序 (越快到期越前)
+  alerts.sort(function(a, b) { return a.daysLeft - b.daysLeft; });
+
+  return { success: true, alerts: alerts };
 }
 
 function setupExpiryReminderTrigger() {
