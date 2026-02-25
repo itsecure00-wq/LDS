@@ -790,6 +790,33 @@ function getWAList(filter) {
   return { records: records.slice(0, 50), pending: pending, sent: sent };
 }
 
+function searchWARecords(keyword) {
+  if (!keyword || String(keyword).trim() === '') return { records: [] };
+  var kw = String(keyword).trim().toLowerCase();
+  var d = getSheet(SH.RECORDS).getDataRange().getValues();
+  var records = [];
+  for (var i = 1; i < d.length; i++) {
+    var phone = String(d[i][3] || '');
+    var name = String(d[i][4] || '').toLowerCase();
+    var code = String(d[i][6] || '').toLowerCase();
+    if (phone.indexOf(kw) >= 0 || name.indexOf(kw) >= 0 || code.indexOf(kw) >= 0) {
+      var waStatus = d[i][8] || '待发送';
+      records.push({
+        code: d[i][6],
+        phone: d[i][3],
+        name: d[i][4],
+        prize: d[i][5],
+        drawTime: d[i][1] ? Utilities.formatDate(new Date(d[i][1]), 'Asia/Kuala_Lumpur', 'MM-dd HH:mm') : '',
+        expiryDate: d[i][7] ? Utilities.formatDate(new Date(d[i][7]), 'Asia/Kuala_Lumpur', 'MM-dd') : '',
+        waStatus: waStatus,
+        waSentTime: d[i][9] ? Utilities.formatDate(new Date(d[i][9]), 'Asia/Kuala_Lumpur', 'MM-dd HH:mm') : ''
+      });
+    }
+  }
+  records.reverse();
+  return { records: records };
+}
+
 function sendWhatsAppByCode(code, sessionToken) {
   var session = validateSession(sessionToken);
   if (!session) return { success: false, message: '会话已过期，请重新登录' };

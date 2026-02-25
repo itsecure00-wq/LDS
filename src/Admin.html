@@ -262,11 +262,17 @@
     <div class="tab-content" id="tab-whatsapp">
       <div class="card">
         <h3>📱 WhatsApp 验证码发送</h3>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="waSearchInput" placeholder="搜索 手机/姓名/验证码" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+          <button class="btn btn-primary" onclick="searchWA()" style="white-space:nowrap;">🔍 查询</button>
+          <button class="btn" onclick="clearWASearch()" style="white-space:nowrap;">清除</button>
+        </div>
         <div class="list-filter">
           <button class="filter-btn active" onclick="filterWA('pending',this)">待发送</button>
           <button class="filter-btn" onclick="filterWA('sent',this)">已发送</button>
           <button class="filter-btn" onclick="filterWA('all',this)">全部</button>
         </div>
+        <div id="waSearchHint" style="display:none;padding:6px 10px;background:#fff3cd;border-radius:6px;font-size:12px;color:#856404;margin-bottom:8px;"></div>
         <div class="data-list" id="waList"><div class="empty-state"><div class="icon">📱</div><p>加载中...</p></div></div>
       </div>
       <div class="card">
@@ -758,6 +764,27 @@
       waFilter = f;
       document.querySelectorAll('#tab-whatsapp .filter-btn').forEach(function(b) { b.classList.remove('active'); });
       if (btn) btn.classList.add('active');
+      document.getElementById('waSearchInput').value = '';
+      document.getElementById('waSearchHint').style.display = 'none';
+      loadWAList();
+    }
+
+    function searchWA() {
+      var kw = document.getElementById('waSearchInput').value.trim();
+      if (!kw) { clearWASearch(); return; }
+      document.getElementById('waList').innerHTML = '<div class="empty-state"><p>搜索中...</p></div>';
+      google.script.run.withSuccessHandler(function(r) {
+        waData = r.records || [];
+        var hint = document.getElementById('waSearchHint');
+        hint.textContent = '🔍 搜索 "' + kw + '" 找到 ' + waData.length + ' 条记录';
+        hint.style.display = 'block';
+        renderWAList(waData);
+      }).searchWARecords(kw);
+    }
+
+    function clearWASearch() {
+      document.getElementById('waSearchInput').value = '';
+      document.getElementById('waSearchHint').style.display = 'none';
       loadWAList();
     }
     
