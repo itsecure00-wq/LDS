@@ -19,10 +19,10 @@ async def gen(idx, text):
     fname = os.path.join(OUT_DIR, f'audio_{idx+1}.mp3')
     communicate = edge_tts.Communicate(
         text,
-        voice='zh-CN-YunxiNeural',    # 云希 — 活力男声，像游戏主持人
-        rate='+8%',    # 比正常快一点点，有活力但不赶
-        pitch='+12Hz', # 高一点，明亮有朝气
-        volume='+15%',
+        voice='zh-CN-YunjianNeural',   # 云健 — 浑厚有力，传销感满满
+        rate='+12%',   # 快一些，有紧迫感
+        pitch='+8Hz',  # 稍高，更有穿透力
+        volume='+20%',
     )
     await communicate.save(fname)
     print(f'  [ok] audio_{idx+1}.mp3 done ({len(text)} chars)')

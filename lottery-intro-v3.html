@@ -313,6 +313,17 @@ html, body {
   box-shadow:0 0 60px #ff330033;
 }
 
+/* ══ 元素逐个出现效果 ══ */
+.wait {
+  opacity: 0 !important;
+  transform: translateY(36px) scale(0.96) !important;
+  transition: opacity 0.55s cubic-bezier(0.22,1,0.36,1),
+              transform 0.55s cubic-bezier(0.22,1,0.36,1) !important;
+}
+.wait.in {
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+}
 </style>
 </head>
 <body>
@@ -579,96 +590,133 @@ function startMusic() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
 
-  // BPM 150 — 节庆感强、有活力
-  const BPM = 150, beat = 60 / BPM;
-  const F = {
-    C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392, A4:440, B4:493.88,
-    C5:523.25, D5:587.33, E5:659.25, G5:783.99, A5:880, C6:1046.5
-  };
+  // 主混音器 — 用压缩器让鼓更突出
+  const master = audioCtx.createGain();
+  const comp = audioCtx.createDynamicsCompressor();
+  comp.threshold.value = -18; comp.ratio.value = 6; comp.attack.value = 0.003;
+  master.connect(comp); comp.connect(audioCtx.destination);
+  master.gain.value = 0.85;
 
-  // 主旋律 — 欢快喜庆，像游戏胜利音效
-  const melody = [
-    ['C5',.5,0],['E5',.5,.5],['G5',1,1],
-    ['E5',.5,2],['G5',.5,2.5],['A5',1,3],
-    ['G5',.5,4],['E5',.5,4.5],['C5',.5,5],['E5',.5,5.5],
-    ['D5',1,6],['D5',.5,7],['E5',.5,7.5],
-    ['C5',.5,8],['E5',.5,8.5],['G5',1,9],
-    ['A5',.5,10],['G5',.5,10.5],['E5',1,11],
-    ['F4',.5,12],['A4',.5,12.5],['C5',.5,13],['E5',.5,13.5],
-    ['D5',1,14],['G5',2,15],
-  ];
-  const totalBeats = 17;
+  const BPM = 140, beat = 60 / BPM;
+  const totalBeats = 16;
   const loopTime = totalBeats * beat;
 
-  // 声音发生器 — 用 square 波，更明亮有力
-  function note(freq, t, dur, vol, type='square') {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    // 轻微失真让声音更丰满
-    const comp = audioCtx.createDynamicsCompressor();
-    o.connect(g); g.connect(comp); comp.connect(audioCtx.destination);
-    o.type = type; o.frequency.setValueAtTime(freq, 0);
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.75);
-    o.start(t); o.stop(t + dur + 0.02);
-    musicNodes.push(o, g, comp);
+  // ──── KICK：重低音鼓 ────
+  function kick(t) {
+    // 双层：低频 body + 高频 click
+    const o1 = audioCtx.createOscillator();
+    const g1 = audioCtx.createGain();
+    o1.connect(g1); g1.connect(master);
+    o1.frequency.setValueAtTime(200, t);
+    o1.frequency.exponentialRampToValueAtTime(35, t + 0.15);
+    g1.gain.setValueAtTime(0.7, t);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    o1.start(t); o1.stop(t + 0.3);
+
+    const o2 = audioCtx.createOscillator();
+    const g2 = audioCtx.createGain();
+    o2.connect(g2); g2.connect(master);
+    o2.type = 'square';
+    o2.frequency.setValueAtTime(600, t);
+    o2.frequency.exponentialRampToValueAtTime(80, t + 0.03);
+    g2.gain.setValueAtTime(0.3, t);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    o2.start(t); o2.stop(t + 0.06);
+    musicNodes.push(o1, g1, o2, g2);
   }
 
-  // 打击乐 kick — 更重的鼓声
-  function kick(t) {
+  // ──── CLAP：拍手声（宽频噪音 + 短延迟叠加） ────
+  function clap(t) {
+    for (let n = 0; n < 3; n++) {
+      const delay = n * 0.012;  // 3层叠加 = 拍手质感
+      const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.08, audioCtx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+      const s = audioCtx.createBufferSource();
+      const bpf = audioCtx.createBiquadFilter();
+      bpf.type = 'bandpass'; bpf.frequency.value = 1200; bpf.Q.value = 0.8;
+      const g = audioCtx.createGain();
+      s.buffer = buf; s.connect(bpf); bpf.connect(g); g.connect(master);
+      g.gain.setValueAtTime(0.5, t + delay);
+      g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.1);
+      s.start(t + delay);
+      musicNodes.push(s, g);
+    }
+  }
+
+  // ──── HI-HAT ────
+  function hat(t, open) {
+    const dur = open ? 0.12 : 0.035;
+    const vol = open ? 0.12 : 0.08;
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length)*0.6;
+    const s = audioCtx.createBufferSource();
+    const hpf = audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=7000;
+    const g = audioCtx.createGain();
+    s.buffer=buf; s.connect(hpf); hpf.connect(g); g.connect(master);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.start(t);
+    musicNodes.push(s, g);
+  }
+
+  // ──── SYNTH STAB：短促明亮和弦 ────
+  function stab(freqs, t) {
+    freqs.forEach(f => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(master);
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f, 0);
+      g.gain.setValueAtTime(0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      o.start(t); o.stop(t + 0.2);
+      musicNodes.push(o, g);
+    });
+  }
+
+  // ──── BASS ────
+  function bass(freq, t, dur) {
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    o.connect(g); g.connect(audioCtx.destination);
-    o.frequency.setValueAtTime(180, t);
-    o.frequency.exponentialRampToValueAtTime(40, t + 0.12);
-    g.gain.setValueAtTime(0.4, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    o.start(t); o.stop(t + 0.22);
+    o.connect(g); g.connect(master);
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(freq, 0);
+    g.gain.setValueAtTime(0.2, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.9);
+    o.start(t); o.stop(t + dur);
     musicNodes.push(o, g);
   }
 
-  // 拍手声 / snare
-  function snare(t) {
-    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.12, audioCtx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
-    const s = audioCtx.createBufferSource();
-    const bpf = audioCtx.createBiquadFilter(); bpf.type='bandpass'; bpf.frequency.value=2000;
-    const g = audioCtx.createGain();
-    s.buffer=buf; s.connect(bpf); bpf.connect(g); g.connect(audioCtx.destination);
-    g.gain.setValueAtTime(0.28, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t+0.12);
-    s.start(t); musicNodes.push(s, g);
-  }
-
-  // hi-hat
-  function hat(t, vol=0.07) {
-    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.04, audioCtx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*.5;
-    const s = audioCtx.createBufferSource();
-    const hpf = audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=9000;
-    const g = audioCtx.createGain();
-    s.buffer=buf; s.connect(hpf); hpf.connect(g); g.connect(audioCtx.destination);
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t+0.04);
-    s.start(t); musicNodes.push(s, g);
-  }
+  // 和弦进行 C-Am-F-G（循环4小节）
+  const chords = [
+    [261.63, 329.63, 392],    // C
+    [220, 261.63, 329.63],    // Am
+    [174.61, 220, 261.63],    // F
+    [196, 246.94, 293.66],    // G
+  ];
+  const bassNotes = [130.81, 110, 87.31, 98];  // C2 A2 F2 G2
 
   function loop(t0) {
-    // 旋律
-    melody.forEach(([n, dur, dl]) => note(F[n], t0+dl*beat, dur*beat, 0.08));
-    // 低音 bassline — 律动感强
-    const bassline = ['C4','C4','G4','A4','F4','G4','C4','G4'];
-    bassline.forEach((n,i) => note(F[n]/2, t0+i*2*beat, 2*beat*0.8, 0.12, 'triangle'));
-    // 鼓组 — kick 在 1、3 拍，snare 在 2、4 拍
-    for (let b=0;b<totalBeats*2;b++) {
-      const t = t0 + b * beat * 0.5;
-      if (b%4===0) kick(t);
-      if (b%4===2) snare(t);
-      if (b%2===0) hat(t, 0.06);
-      else hat(t, 0.04);
+    for (let bar = 0; bar < 4; bar++) {
+      const bt = t0 + bar * 4 * beat;
+      // Bass — 每小节一个根音
+      bass(bassNotes[bar], bt, 4 * beat);
+      // 和弦 stab — 每小节开头 + 第三拍
+      stab(chords[bar], bt);
+      stab(chords[bar], bt + 2 * beat);
+
+      for (let b = 0; b < 4; b++) {
+        const t = bt + b * beat;
+        // Kick: 拍 1 和 3
+        if (b === 0 || b === 2) kick(t);
+        // Clap: 拍 2 和 4
+        if (b === 1 || b === 3) clap(t);
+        // Hat: 每八分音符
+        hat(t, false);
+        hat(t + beat * 0.5, b === 3);  // 第4拍后半用 open hat
+      }
     }
     setTimeout(() => loop(t0 + loopTime), (loopTime - 0.5) * 1000);
   }
@@ -764,15 +812,33 @@ let current = 0;
 let busy = false;
 const fill = document.getElementById('progFill');
 
+// 每个场景元素出现间隔（ms）
+const REVEAL_GAP = 600;
+
+function cleanScene(sceneId) {
+  const el = document.getElementById(sceneId);
+  el.classList.remove('active');
+  el.querySelectorAll('.wait').forEach(item => item.classList.remove('in', 'wait'));
+}
+
 function showScene(idx, autoNext) {
   current = idx;
-  SCENES.forEach(id => document.getElementById(id).classList.remove('active'));
+  SCENES.forEach(id => cleanScene(id));
   document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('on', i===idx));
-  document.getElementById(SCENES[idx]).classList.add('active');
+
+  const sceneEl = document.getElementById(SCENES[idx]);
+  sceneEl.classList.add('active');
+
+  // 元素逐个出现
+  const items = sceneEl.querySelectorAll(':scope > *');
+  items.forEach(item => item.classList.add('wait'));
+  items.forEach((item, i) => {
+    setTimeout(() => item.classList.add('in'), 200 + i * REVEAL_GAP);
+  });
 
   // 进度条
   fill.style.transition = 'none'; fill.style.width = '0%';
-  const estMs = Math.max(NARRATIONS[idx].length * 350 + 3000, 8000);
+  const estMs = Math.max(items.length * REVEAL_GAP + 4000, 6000);
   requestAnimationFrame(() => {
     fill.style.transition = `width ${estMs}ms linear`;
     fill.style.width = '80%';
@@ -781,33 +847,32 @@ function showScene(idx, autoNext) {
   speak(NARRATIONS[idx], idx, autoNext ? () => {
     fill.style.transition = 'width 0.3s ease';
     fill.style.width = '100%';
-    setTimeout(advance, 400);
+    setTimeout(advance, 300);
   } : null);
 }
 
 function advance() {
   if (busy) return; busy = true;
-  speechSynthesis.cancel();
+  narrationAudio.pause();
   subEl.classList.remove('show');
   const next = (current + 1) % SCENES.length;
-  // 先淡出当前
-  document.getElementById(SCENES[current]).classList.remove('active');
+  cleanScene(SCENES[current]);
   setTimeout(() => {
     busy = false;
     showScene(next, true);
-  }, 500); // 等淡出动画 0.5s 完成
+  }, 400);
 }
 
 function goTo(idx) {
   if (busy) return;
   busy = true;
-  speechSynthesis.cancel();
+  narrationAudio.pause();
   subEl.classList.remove('show');
-  document.getElementById(SCENES[current]).classList.remove('active');
+  cleanScene(SCENES[current]);
   setTimeout(() => {
     busy = false;
     showScene(idx, true);
-  }, 450);
+  }, 400);
 }
 
 // ══════════════════════════════════════════════════════
