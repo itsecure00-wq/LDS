@@ -668,15 +668,18 @@ SCENES.forEach((_,i) => {
 });
 
 // ══════════════════════════════════════════════════════
-//  7. 语音 — 等讲完才换页
+//  7. 语音 — 支持桌面语音 + 手机定时器双模式
 // ══════════════════════════════════════════════════════
 let voiceOn = true;
 const subEl = document.getElementById('subtitle');
 
-function speak(text, onDone) {
+// 当语音不可用时，每个场景的显示时长（毫秒）
+const SCENE_DURATION = [7000, 9000, 9000, 9000, 10000, 9000, 9000, 9000];
+
+function speak(text, sceneIdx, onDone) {
   if (!voiceOn || !text || !('speechSynthesis' in window)) {
     subEl.textContent = ''; subEl.classList.remove('show');
-    if (onDone) setTimeout(onDone, 1200);
+    if (onDone) setTimeout(onDone, SCENE_DURATION[sceneIdx] || 8000);
     return;
   }
   speechSynthesis.cancel();
@@ -691,20 +694,32 @@ function speak(text, onDone) {
   if (selectedVoice) utt.voice = selectedVoice;
 
   let fired = false;
+  let noStartTimer = null;
+  let safetyTimer = null;
+
   function done() {
     if (fired) return; fired = true;
+    clearTimeout(noStartTimer);
+    clearTimeout(safetyTimer);
     subEl.classList.remove('show');
-    if (onDone) setTimeout(onDone, 1600);
+    if (onDone) setTimeout(onDone, 1400);
   }
-  utt.onend   = done;
-  utt.onerror = done;
 
-  // Chrome bug: speech sometimes silently stops; 设一个保底 timeout
-  const maxMs = Math.max(text.length * 380 + 3000, 8000);
-  const fallback = setTimeout(done, maxMs);
-  utt.onend = () => { clearTimeout(fallback); done(); };
+  // 如果 4 秒内语音没有开始（Android / 无中文语音）→ 切换到定时器模式
+  noStartTimer = setTimeout(() => {
+    safetyTimer = setTimeout(done, SCENE_DURATION[sceneIdx] || 8000);
+  }, 4000);
 
-  // 先等 100ms 确保之前的 cancel 生效
+  utt.onstart = () => {
+    // 语音成功启动 → 等自然结束，加最长安全保障
+    clearTimeout(noStartTimer);
+    const maxMs = Math.max(text.length * 430 + 2000, 8000);
+    safetyTimer = setTimeout(done, maxMs);
+  };
+
+  utt.onend   = () => done();
+  utt.onerror = () => done();
+
   setTimeout(() => speechSynthesis.speak(utt), 100);
 }
 
@@ -729,7 +744,7 @@ function showScene(idx, autoNext) {
     fill.style.width = '80%';
   });
 
-  speak(NARRATIONS[idx], autoNext ? () => {
+  speak(NARRATIONS[idx], idx, autoNext ? () => {
     fill.style.transition = 'width 0.3s ease';
     fill.style.width = '100%';
     setTimeout(advance, 400);
