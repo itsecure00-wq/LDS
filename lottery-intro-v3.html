@@ -673,64 +673,48 @@ SCENES.forEach((_,i) => {
 let voiceOn = true;
 const subEl = document.getElementById('subtitle');
 
-// 每个场景显示时长（手机/无语音模式使用）
-const SCENE_DURATION = [7000, 9000, 9000, 9000, 10000, 9000, 9000, 9000];
+// ══ 真实 MP3 语音 — 微软小晓 Neural TTS ══
+// 所有平台通用，不依赖浏览器 SpeechSynthesis
 
-// 检测手机/平板 — 移动端跳过语音，直接用定时器
-const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+const narrationAudio = new Audio();
+narrationAudio.preload = 'auto';
+
+// 预加载第一个场景的音频
+narrationAudio.src = 'audio_1.mp3';
 
 function speak(text, sceneIdx, onDone) {
-  const dur = SCENE_DURATION[sceneIdx] || 8000;
-
-  // 移动端模式：跳过语音，显示字幕 + 定时换页
-  if (IS_MOBILE || !voiceOn || !text || !('speechSynthesis' in window)) {
-    if (text && (IS_MOBILE || voiceOn)) {
-      subEl.textContent = text;
-      subEl.classList.add('show');
-      setTimeout(() => subEl.classList.remove('show'), dur - 1200);
-    } else {
-      subEl.textContent = ''; subEl.classList.remove('show');
-    }
-    if (onDone) setTimeout(onDone, dur);
+  if (!voiceOn) {
+    subEl.textContent = ''; subEl.classList.remove('show');
+    if (onDone) setTimeout(onDone, 1200);
     return;
   }
 
-  // 桌面语音模式
-  speechSynthesis.cancel();
+  // 显示字幕
   subEl.textContent = text;
   subEl.classList.add('show');
 
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'zh-CN';
-  utt.rate = 0.78;
-  utt.pitch = 1.05;
-  utt.volume = 1;
-  if (selectedVoice) utt.voice = selectedVoice;
+  // 播放对应场景的 MP3
+  narrationAudio.pause();
+  narrationAudio.currentTime = 0;
+  narrationAudio.src = `audio_${sceneIdx + 1}.mp3`;
 
   let fired = false;
-  let safetyTimer = null;
-
   function done() {
     if (fired) return; fired = true;
-    clearTimeout(safetyTimer);
     subEl.classList.remove('show');
-    if (onDone) setTimeout(onDone, 1400);
+    if (onDone) setTimeout(onDone, 1200);
   }
 
-  utt.onstart = () => {
-    // 语音启动成功 — 等 onend，同时设安全保障（场景时长 × 2）
-    safetyTimer = setTimeout(done, dur * 2);
+  narrationAudio.onended = done;
+  narrationAudio.onerror = () => {
+    // MP3 加载失败时，用定时器保底
+    setTimeout(done, 8000);
   };
-  utt.onend   = () => done();
-  utt.onerror = () => done();
 
-  // 若 5 秒内 onstart 从未触发，直接用定时器
-  const noStartTimer = setTimeout(() => {
-    if (!fired) { safetyTimer = setTimeout(done, dur); }
-  }, 5000);
-  utt.onstart = () => { clearTimeout(noStartTimer); safetyTimer = setTimeout(done, dur * 2); };
-
-  setTimeout(() => speechSynthesis.speak(utt), 100);
+  narrationAudio.play().catch(() => {
+    // 自动播放被浏览器阻止（需要用户先点击）→ 定时器保底
+    setTimeout(done, 8000);
+  });
 }
 
 // ══════════════════════════════════════════════════════
@@ -797,7 +781,7 @@ document.getElementById('btnM').onclick = () => {
 document.getElementById('btnV').onclick = () => {
   voiceOn = !voiceOn;
   document.getElementById('btnV').classList.toggle('off', !voiceOn);
-  if (!voiceOn) { speechSynthesis.cancel(); subEl.classList.remove('show'); }
+  if (!voiceOn) { narrationAudio.pause(); subEl.classList.remove('show'); }
 };
 // 点击内容区跳到下一页
 stage.addEventListener('click', e => {
