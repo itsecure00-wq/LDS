@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>张崇会火锅 · 积分抽奖介绍</title>
+<style>
+
+/* ══════════════════════════════════════════
+   全局：body 撑满视口，#stage 居中缩放
+══════════════════════════════════════════ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  width:100vw; height:100vh; overflow:hidden;
+  background:#000;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Microsoft YaHei','微软雅黑',sans-serif;
+}
+
+/* 固定 1920×1080 舞台，JS scale 自动适配任何屏幕 */
+#stage {
+  width:1920px; height:1080px;
+  position:relative; overflow:hidden;
+  transform-origin:center center;
+  background:#06000a;
+  cursor:none;
+  flex-shrink:0;
+}
+
+/* ══ 背景渐变 ══ */
+.bg {
+  position:absolute; inset:0; z-index:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 15% 90%, #3d0900 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 90%, #1a0500 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 50% 10%, #08002a 0%, transparent 70%),
+    #06000a;
+}
+
+/* ══ 粒子 canvas ══ */
+#particles { position:absolute; inset:0; z-index:1; pointer-events:none; }
+
+/* ══════════════════════════════════════════
+   开始屏幕
+══════════════════════════════════════════ */
+#startScreen {
+  position:absolute; inset:0; z-index:300;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:radial-gradient(ellipse at 50% 60%, #180800 0%, #000000 70%);
+  transition:opacity 0.7s ease;
+}
+#startScreen.out { opacity:0; pointer-events:none; }
+
+.ss-brand { font-size:58px; color:#ff8844; letter-spacing:10px; margin-bottom:14px; }
+.ss-main {
+  font-size:190px; font-weight:900; line-height:1;
+  background:linear-gradient(180deg,#ffe500 0%,#ff8800 40%,#ff2200 75%,#cc0000 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 50px #ff550099);
+  letter-spacing:16px; margin-bottom:16px;
+}
+.ss-sub {
+  font-size:50px; color:#ffd700bb; letter-spacing:16px;
+  margin-bottom:64px;
+}
+.ss-btn {
+  font-size:56px; color:#fff; font-family:inherit;
+  background:linear-gradient(135deg,#cc3300 0%,#ff6600 100%);
+  border:none; padding:30px 130px; border-radius:80px;
+  cursor:pointer; letter-spacing:6px;
+  box-shadow:0 0 80px #ff440077;
+  animation:btnGlow 2s ease-in-out infinite alternate;
+  transition:transform 0.12s;
+}
+.ss-btn:hover  { transform:scale(1.05); }
+.ss-btn:active { transform:scale(0.96); }
+@keyframes btnGlow {
+  from{ box-shadow:0 0 50px #ff330044, 0 0 100px #ff110011 }
+  to  { box-shadow:0 0 110px #ff3300bb, 0 0 220px #ff110044 }
+}
+.ss-hint { font-size:32px; color:#ffffff44; margin-top:28px; letter-spacing:2px; }
+
+/* 加载指示器 */
+#loadingDot {
+  font-size:28px; color:#ff880077; letter-spacing:2px;
+  margin-top:16px; min-height:40px;
+}
+
+/* ══════════════════════════════════════════
+   场景通用
+══════════════════════════════════════════ */
+.scene {
+  position:absolute; inset:0; z-index:10;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.45s ease;
+}
+.scene.active { opacity:1; pointer-events:all; }
+
+/* ══ 字幕条 ══ */
+#subtitle {
+  position:absolute; bottom:76px; left:50%; transform:translateX(-50%);
+  min-width:1000px; max-width:1800px;
+  background:#000000cc; border:2px solid #ff550033;
+  border-radius:22px; padding:22px 80px;
+  font-size:48px; color:#ffe0a0; letter-spacing:2px; text-align:center;
+  text-shadow:0 2px 12px #ff440033;
+  backdrop-filter:blur(6px);
+  z-index:40; opacity:0; transition:opacity 0.35s ease;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+#subtitle.show { opacity:1; }
+
+/* ══ 进度条 ══ */
+#progBar { position:absolute; bottom:0; left:0; right:0; height:6px; background:#ffffff0d; z-index:40; }
+#progFill { height:100%; width:0%; background:linear-gradient(90deg,#ff3300,#ff8800,#ffd700); box-shadow:0 0 8px #ff7700; }
+
+/* ══ 导航点 ══ */
+#dots {
+  position:absolute; right:38px; top:50%; transform:translateY(-50%);
+  display:flex; flex-direction:column; gap:16px; z-index:40;
+}
+.dot { width:11px; height:11px; border-radius:50%; background:#ffffff1a; cursor:pointer; transition:all 0.3s; }
+.dot.on { background:#ffd700; transform:scale(1.8); box-shadow:0 0 10px #ffd700; }
+
+/* ══ 控制按钮 ══ */
+#ctrl { position:absolute; top:28px; right:28px; z-index:40; display:flex; gap:14px; }
+.cbtn {
+  width:62px; height:62px; border-radius:50%;
+  background:#ffffff16; border:2px solid #ffffff2a;
+  color:#fff; font-size:28px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background 0.2s; backdrop-filter:blur(4px);
+}
+.cbtn:hover { background:#ffffff2e; }
+.cbtn.off { opacity:0.3; }
+
+/* ══════════════════════════════════════════
+   场景 1 — 开场
+══════════════════════════════════════════ */
+#s1 { gap:14px; }
+.s1-brand { font-size:52px; color:#ff8844; letter-spacing:10px; animation:dn .7s .1s both; }
+.s1-main {
+  font-size:178px; font-weight:900; line-height:1;
+  background:linear-gradient(180deg,#ffe500 0%,#ff8800 40%,#ff2200 75%,#cc0000 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 44px #ff440088);
+  letter-spacing:14px;
+  animation:flmIn 1s .3s both, flmPls 2.5s 1.3s ease-in-out infinite alternate;
+}
+.s1-en  { font-size:46px; color:#ffd700aa; letter-spacing:20px; animation:up .7s .7s both; }
+.s1-div {
+  width:700px; height:3px; margin:6px 0;
+  background:linear-gradient(90deg,transparent,#ff6600,#ffd700,#ff6600,transparent);
+  animation:up .5s .9s both;
+}
+.s1-sub { font-size:40px; color:#ffaa66aa; letter-spacing:6px; animation:up .7s 1.1s both; }
+.s1-cta {
+  margin-top:22px; font-size:52px; color:#fff;
+  background:linear-gradient(135deg,#cc3300,#ff6600);
+  padding:22px 90px; border-radius:65px; letter-spacing:4px;
+  animation:up .7s 1.3s both, ctaP 2s 2.1s ease-in-out infinite alternate;
+  box-shadow:0 0 60px #ff330044;
+}
+@keyframes ctaP { from{box-shadow:0 0 40px #ff330044} to{box-shadow:0 0 90px #ff3300aa,0 0 180px #ff110044} }
+@keyframes flmIn { from{transform:scale(.5) translateY(60px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+@keyframes flmPls { from{filter:drop-shadow(0 0 30px #ff440055)} to{filter:drop-shadow(0 0 70px #ff4400cc)} }
+@keyframes dn { from{transform:translateY(-38px);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes up { from{transform:translateY(38px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+/* ══════════════════════════════════════════
+   场景 2-4 — 积分获取
+══════════════════════════════════════════ */
+.earn { gap:0; }
+.earn-hd { font-size:36px; color:#ff8855; letter-spacing:6px; margin-bottom:28px; animation:dn .5s both; }
+.earn-row { display:flex; align-items:center; gap:100px; }
+.earn-ico-wrap { position:relative; animation:icoIn .6s .1s cubic-bezier(.34,1.56,.64,1) both; }
+.earn-ico {
+  width:300px; height:300px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:148px;
+}
+.earn-ring { position:absolute; inset:-14px; border-radius:50%; border:4px solid transparent; animation:spin 3s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes icoIn { from{transform:scale(0) rotate(-20deg);opacity:0} to{transform:scale(1) rotate(0);opacity:1} }
+.earn-txt { max-width:930px; }
+.earn-num  { font-size:34px; color:#ff8844; letter-spacing:4px; margin-bottom:12px; animation:up .4s .15s both; }
+.earn-ttl  { font-size:96px; font-weight:900; line-height:1.1; margin-bottom:16px; animation:up .4s .25s both; }
+.earn-desc { font-size:46px; color:#ffddbb; line-height:1.7; margin-bottom:26px; animation:up .4s .35s both; }
+.earn-badge {
+  display:inline-flex; align-items:center; gap:16px;
+  background:linear-gradient(135deg,#cc4400aa,#ff880066);
+  border:3px solid #ff660077; border-radius:60px;
+  padding:16px 60px; font-size:68px; font-weight:900; color:#ffd700;
+  text-shadow:0 0 20px #ffd70077;
+  box-shadow:0 0 40px #ff440033;
+  animation:bdgIn .5s .45s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes bdgIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+
+/* 颜色主题 */
+.t-reg .earn-ico { background:linear-gradient(135deg,#0055cc,#003388); box-shadow:0 0 80px #0066cc44; }
+.t-reg .earn-ring { border-top-color:#4499ff; border-right-color:#4499ff66; }
+.t-reg .earn-ttl  { color:#88ccff; text-shadow:0 0 40px #4488ff44; }
+.t-inv .earn-ico { background:linear-gradient(135deg,#aa4400,#662200); box-shadow:0 0 80px #ff660044; }
+.t-inv .earn-ring { border-top-color:#ff8833; border-right-color:#ff883366; }
+.t-inv .earn-ttl  { color:#ffaa66; text-shadow:0 0 40px #ff660044; }
+.t-chk .earn-ico { background:linear-gradient(135deg,#006633,#003322); box-shadow:0 0 80px #00aa4444; }
+.t-chk .earn-ring { border-top-color:#44ff88; border-right-color:#44ff8866; }
+.t-chk .earn-ttl  { color:#88ffbb; text-shadow:0 0 40px #00ff6644; }
+
+/* ══════════════════════════════════════════
+   场景 5 — 如何抽奖
+══════════════════════════════════════════ */
+#s5 { gap:36px; }
+.s5-ttl { font-size:88px; font-weight:900; color:#ffd700; text-shadow:0 0 50px #ffd70044; animation:dn .5s both; }
+.flow-row { display:flex; align-items:center; }
+.flow-card { width:330px; text-align:center; padding:0 18px; animation:crdIn .5s cubic-bezier(.34,1.56,.64,1) both; }
+.flow-card:nth-child(1){animation-delay:.07s}
+.flow-card:nth-child(3){animation-delay:.21s}
+.flow-card:nth-child(5){animation-delay:.35s}
+.flow-card:nth-child(7){animation-delay:.49s}
+.flow-cir {
+  width:174px; height:174px; border-radius:50%; margin:0 auto 16px;
+  display:flex; align-items:center; justify-content:center; font-size:84px;
+}
+.fc-b { background:linear-gradient(135deg,#0055cc,#003388); box-shadow:0 0 50px #0055cc44; }
+.fc-g { background:linear-gradient(135deg,#cc8800,#664400); box-shadow:0 0 50px #cc880044; }
+.fc-r { background:linear-gradient(135deg,#cc2200,#660011); box-shadow:0 0 50px #cc220044; }
+.fc-n { background:linear-gradient(135deg,#006633,#003322); box-shadow:0 0 50px #00aa4444; }
+.flow-lbl { font-size:36px; color:#fff; font-weight:700; line-height:1.4; }
+.flow-sub { font-size:26px; color:#ffaa88; margin-top:6px; }
+.flow-arr { font-size:64px; color:#ff6600; margin:0 8px; animation:arrP 1s ease-in-out infinite alternate; }
+@keyframes arrP { from{transform:scaleX(.8);opacity:.5} to{transform:scaleX(1.1);opacity:1} }
+@keyframes crdIn { from{transform:scale(.5) translateY(60px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+.rules-strip {
+  background:#ffffff0a; border:2px solid #ffffff16; border-radius:20px;
+  padding:20px 70px; font-size:42px; color:#ffddaa;
+  display:flex; gap:60px; align-items:center;
+  animation:up .5s .55s both;
+}
+.rules-strip .hl { color:#ffd700; font-weight:900; font-size:50px; }
+
+/* ══════════════════════════════════════════
+   场景 6 — 奖品
+══════════════════════════════════════════ */
+#s6 { gap:26px; }
+.s6-ttl { font-size:80px; font-weight:900; color:#ffd700; text-shadow:0 0 50px #ffd70044; animation:dn .5s both; }
+.prizes { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; width:1680px; }
+.pcrd { border-radius:26px; padding:26px 16px; text-align:center; position:relative; overflow:hidden; animation:crdIn .5s both; }
+.pcrd:nth-child(1){animation-delay:.04s}.pcrd:nth-child(2){animation-delay:.08s}
+.pcrd:nth-child(3){animation-delay:.12s}.pcrd:nth-child(4){animation-delay:.16s}
+.pcrd:nth-child(5){animation-delay:.20s}.pcrd:nth-child(6){animation-delay:.24s}
+.pcrd:nth-child(7){animation-delay:.28s}.pcrd:nth-child(8){animation-delay:.32s}
+.pcrd.n { background:linear-gradient(135deg,#1a0a00,#2e1200); border:2px solid #ff44001a; }
+.pcrd.b { background:linear-gradient(135deg,#220d00,#4a1800); border:2px solid #ffd70055; }
+.pcrd.b::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,#ffd70010,transparent); }
+.pemi  { font-size:62px; display:block; margin-bottom:8px; }
+.pnam  { font-size:32px; font-weight:700; color:#fff; line-height:1.3; }
+.plbl  { position:absolute; top:12px; right:12px; font-size:22px; padding:4px 14px; border-radius:18px; font-weight:700; }
+.lbig  { background:#cc4400; color:#fff; }
+.lhot  { background:#ff2200; color:#fff; }
+
+/* ══════════════════════════════════════════
+   场景 7 — 规则
+══════════════════════════════════════════ */
+#s7 { gap:26px; }
+.s7-ttl { font-size:76px; font-weight:900; color:#ffd700; text-shadow:0 0 40px #ffd70033; animation:dn .5s both; }
+.rcrd {
+  display:flex; align-items:flex-start; gap:28px;
+  background:#ffffff07; border-left:8px solid;
+  border-radius:0 22px 22px 0; padding:26px 46px; width:1540px; margin-bottom:14px;
+  animation:sldr .4s both;
+}
+.rcrd:nth-child(2){border-color:#ff6600;animation-delay:.04s}
+.rcrd:nth-child(3){border-color:#ffd700;animation-delay:.14s}
+.rcrd:nth-child(4){border-color:#44ff88;animation-delay:.24s}
+.rcrd:nth-child(5){border-color:#4499ff;animation-delay:.34s}
+@keyframes sldr { from{transform:translateX(-80px);opacity:0} to{transform:translateX(0);opacity:1} }
+.rico { font-size:58px; flex-shrink:0; margin-top:4px; }
+.rbdy { font-size:42px; color:#ffddcc; line-height:1.5; }
+.rbdy b { color:#ffd700; font-size:46px; }
+
+/* ══════════════════════════════════════════
+   场景 8 — 扫码
+══════════════════════════════════════════ */
+#s8 { gap:16px; }
+.s8-ttl {
+  font-size:86px; font-weight:900;
+  background:linear-gradient(90deg,#ff8800,#ffd700,#ff8800);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  animation:dn .5s both;
+}
+.s8-sub { font-size:44px; color:#ffccaa; animation:dn .5s .15s both; }
+.qrbox {
+  width:400px; height:400px; background:#fff; border-radius:26px;
+  display:flex; align-items:center; justify-content:center; position:relative;
+  animation:qrPop .7s .3s cubic-bezier(.34,1.56,.64,1) both;
+  box-shadow:0 0 0 10px #ff660044, 0 0 80px #ff440066;
+}
+@keyframes qrPop { from{transform:scale(0) rotate(-180deg);opacity:0} to{transform:scale(1) rotate(0);opacity:1} }
+.qrc { position:absolute; width:50px; height:50px; border-color:#ff6600; border-style:solid; }
+.qrc.tl{top:-6px;left:-6px;border-width:6px 0 0 6px;border-radius:8px 0 0 0}
+.qrc.tr{top:-6px;right:-6px;border-width:6px 6px 0 0;border-radius:0 8px 0 0}
+.qrc.bl{bottom:-6px;left:-6px;border-width:0 0 6px 6px;border-radius:0 0 0 8px}
+.qrc.br{bottom:-6px;right:-6px;border-width:0 6px 6px 0;border-radius:0 0 8px 0}
+.s8-url { font-size:42px; color:#ff9944; letter-spacing:2px; animation:up .5s .75s both; }
+.s8-cta {
+  font-size:52px; font-weight:900; color:#fff;
+  background:linear-gradient(135deg,#cc3300,#ff6600);
+  padding:22px 90px; border-radius:60px; letter-spacing:4px;
+  animation:up .5s .9s both, ctaP 2s 1.5s ease-in-out infinite alternate;
+  box-shadow:0 0 60px #ff330033;
+}
+
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 背景 + 粒子 -->
+  <div class="bg"></div>
+  <canvas id="particles"></canvas>
+
+  <!-- ════ 开始屏幕 ════ -->
+  <div id="startScreen">
+    <div class="ss-brand">🍲 张崇会火锅 · HUI HOTPOT</div>
+    <div class="ss-main">积分抽奖</div>
+    <div class="ss-sub">LUCKY DRAW · 百万镇分店</div>
+    <button class="ss-btn" id="startBtn">▶&nbsp;&nbsp;点击开始介绍</button>
+    <div class="ss-hint">🔊 请确保已开启声音</div>
+    <div id="loadingDot"></div>
+  </div>
+
+  <!-- ════ 控制按钮 ════ -->
+  <div id="ctrl">
+    <button class="cbtn" id="btnM" title="音乐">🎵</button>
+    <button class="cbtn" id="btnV" title="语音">🔊</button>
+  </div>
+
+  <!-- ════ 字幕 ════ -->
+  <div id="subtitle"></div>
+
+  <!-- ════ 场景 1：开场 ════ -->
+  <div class="scene" id="s1">
+    <div class="s1-brand">🍲 张崇会火锅 · HUI HOTPOT</div>
+    <div class="s1-main">积分抽奖</div>
+    <div class="s1-div"></div>
+    <div class="s1-en">LUCKY DRAW · 百万镇分店</div>
+    <div class="s1-cta">🎰 马上参与，赢取大奖！</div>
+  </div>
+
+  <!-- ════ 场景 2：注册 ════ -->
+  <div class="scene earn t-reg" id="s2">
+    <div class="earn-hd">🌟 获取积分方法 · 第一步</div>
+    <div class="earn-row">
+      <div class="earn-ico-wrap">
+        <div class="earn-ico">📱</div>
+        <div class="earn-ring"></div>
+      </div>
+      <div class="earn-txt">
+        <div class="earn-num">STEP 01 — 扫码注册</div>
+        <div class="earn-ttl">扫码注册账号</div>
+        <div class="earn-desc">用手机号注册账号<br>注册成功，积分马上到手！</div>
+        <div class="earn-badge">🎁 注册即送 <span style="color:#fff;margin:0 10px">+1</span> 积分</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ 场景 3：邀请 ════ -->
+  <div class="scene earn t-inv" id="s3">
+    <div class="earn-hd">🌟 获取积分方法 · 第二步</div>
+    <div class="earn-row">
+      <div class="earn-ico-wrap">
+        <div class="earn-ico">👫</div>
+        <div class="earn-ring"></div>
+      </div>
+      <div class="earn-txt">
+        <div class="earn-num">STEP 02 — 邀请朋友</div>
+        <div class="earn-ttl">分享邀请码</div>
+        <div class="earn-desc">把你的专属邀请码分享给朋友<br>朋友成功注册，你立即获得积分！</div>
+        <div class="earn-badge">🤝 每邀一位 <span style="color:#fff;margin:0 10px">+1</span> 积分</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ 场景 4：打卡 ════ -->
+  <div class="scene earn t-chk" id="s4">
+    <div class="earn-hd">🌟 获取积分方法 · 第三步</div>
+    <div class="earn-row">
+      <div class="earn-ico-wrap">
+        <div class="earn-ico">🏠</div>
+        <div class="earn-ring"></div>
+      </div>
+      <div class="earn-txt">
+        <div class="earn-num">STEP 03 — 到店打卡</div>
+        <div class="earn-ttl">到店消费打卡</div>
+        <div class="earn-desc">每次来张崇会火锅用餐<br>打卡一次，积分到账！</div>
+        <div class="earn-badge">📍 每次打卡 <span style="color:#fff;margin:0 10px">+1</span> 积分</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ 场景 5：如何抽奖 ════ -->
+  <div class="scene" id="s5">
+    <div class="s5-ttl">🎰 如何参与抽奖？</div>
+    <div class="flow-row">
+      <div class="flow-card">
+        <div class="flow-cir fc-b">💰</div>
+        <div class="flow-lbl">累积积分</div>
+        <div class="flow-sub">注册/邀请/打卡</div>
+      </div>
+      <div class="flow-arr">▶</div>
+      <div class="flow-card">
+        <div class="flow-cir fc-g">🎫</div>
+        <div class="flow-lbl">使用积分</div>
+        <div class="flow-sub">1积分 = 1次</div>
+      </div>
+      <div class="flow-arr">▶</div>
+      <div class="flow-card">
+        <div class="flow-cir fc-r">🎡</div>
+        <div class="flow-lbl">转动转盘</div>
+        <div class="flow-sub">等待结果！</div>
+      </div>
+      <div class="flow-arr">▶</div>
+      <div class="flow-card">
+        <div class="flow-cir fc-n">🏆</div>
+        <div class="flow-lbl">赢取奖品</div>
+        <div class="flow-sub">扫码核销</div>
+      </div>
+    </div>
+    <div class="rules-strip">
+      <span>每天最多抽 <span class="hl">3次</span></span>
+      <span style="color:#ff660055">|</span>
+      <span>积分有效期 <span class="hl">90天</span></span>
+      <span style="color:#ff660055">|</span>
+      <span>奖品有效期 <span class="hl">30天</span></span>
+    </div>
+  </div>
+
+  <!-- ════ 场景 6：奖品 ════ -->
+  <div class="scene" id="s6">
+    <div class="s6-ttl">🎁 丰富奖品，等你来赢！</div>
+    <div class="prizes">
+      <div class="pcrd n"><span class="pemi">🥤</span><div class="pnam">免费饮料</div></div>
+      <div class="pcrd n"><span class="pemi">🧧</span><div class="pnam">现金折扣券</div></div>
+      <div class="pcrd n"><span class="pemi">🍰</span><div class="pnam">免费甜品</div></div>
+      <div class="pcrd b"><span class="pemi">🎁</span><div class="pnam">神秘福袋</div><div class="plbl lbig">大奖</div></div>
+      <div class="pcrd n"><span class="pemi">🥩</span><div class="pnam">加肉券</div></div>
+      <div class="pcrd n"><span class="pemi">🍜</span><div class="pnam">免费小食</div></div>
+      <div class="pcrd b"><span class="pemi">💝</span><div class="pnam">双人套餐券</div><div class="plbl lhot">热门</div></div>
+      <div class="pcrd n"><span class="pemi">⭐</span><div class="pnam">积分加倍券</div></div>
+    </div>
+  </div>
+
+  <!-- ════ 场景 7：规则 ════ -->
+  <div class="scene" id="s7">
+    <div class="s7-ttl">📋 温馨提示</div>
+    <div class="rcrd"><span class="rico">⏰</span><div class="rbdy">积分有效期 <b>90天</b>，请尽早使用，过期自动归零</div></div>
+    <div class="rcrd"><span class="rico">🎯</span><div class="rbdy">每天最多抽奖 <b>3次</b>，每天凌晨自动重置</div></div>
+    <div class="rcrd"><span class="rico">🎟️</span><div class="rbdy">中奖验证码有效期 <b>30天</b>，出示给员工扫码核销</div></div>
+    <div class="rcrd"><span class="rico">📱</span><div class="rbdy">使用 <b>马来西亚</b> 或 <b>新加坡</b> 手机号注册，一号一账户</div></div>
+  </div>
+
+  <!-- ════ 场景 8：扫码 ════ -->
+  <div class="scene" id="s8">
+    <div class="s8-ttl">🎉 马上开始抽奖！</div>
+    <div class="s8-sub">扫描二维码，立即注册领积分</div>
+    <div class="qrbox">
+      <div class="qrc tl"></div><div class="qrc tr"></div>
+      <div class="qrc bl"></div><div class="qrc br"></div>
+      <img src="qr_table_sticker_v2.png" style="width:360px;height:360px;object-fit:contain"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+      <div style="display:none;flex-direction:column;align-items:center;justify-content:center;color:#333;width:100%;height:100%;font-size:26px;text-align:center;padding:20px">
+        tinyurl.com/<br>HuiHotpotPermasJaya
+      </div>
+    </div>
+    <div class="s8-url">tinyurl.com/HuiHotpotPermasJaya</div>
+    <div class="s8-cta">🔥 扫码注册，免费抽奖！</div>
+  </div>
+
+  <!-- ════ 进度条 + 导航点 ════ -->
+  <div id="progBar"><div id="progFill"></div></div>
+  <div id="dots"></div>
+
+</div><!-- #stage -->
+
+<script>
+// ══════════════════════════════════════════════════════
+//  1. 舞台缩放 — 保持 1920×1080 比例居中显示
+// ══════════════════════════════════════════════════════
+const stage = document.getElementById('stage');
+function scaleStage() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  stage.style.transform = `scale(${s})`;
+}
+window.addEventListener('resize', scaleStage);
+scaleStage();
+
+// ══════════════════════════════════════════════════════
+//  2. 粒子系统
+// ══════════════════════════════════════════════════════
+(function() {
+  const cv = document.getElementById('particles');
+  const cx = cv.getContext('2d');
+  cv.width = 1920; cv.height = 1080;
+  const COLS = ['#ff6600','#ff8800','#ffaa00','#ffd700','#ff4400','#ffcc00','#ffee88'];
+  const pts = [];
+  function spawn(init) {
+    pts.push({
+      x: Math.random()*1920, y: init ? Math.random()*1080 : 1120,
+      vx:(Math.random()-.5)*1.2, vy:-(0.8+Math.random()*2.4),
+      r: 2+Math.random()*4.5,
+      c: COLS[Math.random()*COLS.length|0],
+      a:1, da:0.003+Math.random()*0.005
+    });
+  }
+  for(let i=0;i<80;i++) spawn(true);
+  function tick() {
+    cx.clearRect(0,0,1920,1080);
+    for(let i=pts.length-1;i>=0;i--) {
+      const p=pts[i];
+      p.x+=p.vx; p.y+=p.vy; p.a-=p.da;
+      if(p.a<=0||p.y<-20){ pts.splice(i,1); spawn(false); continue; }
+      cx.save(); cx.globalAlpha=p.a*.8;
+      cx.shadowBlur=p.r*7; cx.shadowColor=p.c;
+      cx.fillStyle=p.c;
+      cx.beginPath(); cx.arc(p.x,p.y,p.r,0,Math.PI*2); cx.fill();
+      cx.restore();
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+
+// ══════════════════════════════════════════════════════
+//  3. 语音预加载 — 页面加载时就开始，不等用户点击
+// ══════════════════════════════════════════════════════
+const PREFERRED_VOICES = [
+  'Microsoft Xiaoxiao Online (Natural) - zh-CN',
+  'Microsoft Yunxi Online (Natural) - zh-CN',
+  'Microsoft Xiaoyi Online (Natural) - zh-CN',
+  'Microsoft Xiaoxiao', 'Microsoft Huihui', 'Microsoft Yaoyao',
+  'Google 普通话（中国大陆）', 'Google Chinese (China)',
+];
+let selectedVoice = null;
+let voicesReady = false;
+const loadingDot = document.getElementById('loadingDot');
+
+function pickVoice() {
+  const vs = speechSynthesis.getVoices();
+  if (!vs.length) return;
+  for (const name of PREFERRED_VOICES) {
+    const v = vs.find(v => v.name === name || v.name.includes(name));
+    if (v) { selectedVoice = v; break; }
+  }
+  if (!selectedVoice) {
+    selectedVoice = vs.find(v => v.lang==='zh-CN'||v.lang==='zh') || vs[0] || null;
+  }
+  voicesReady = true;
+  loadingDot.textContent = selectedVoice ? `✅ 语音已就绪：${selectedVoice.name.substring(0,30)}` : '⚠️ 使用默认语音';
+}
+
+// 立即尝试加载
+if ('speechSynthesis' in window) {
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+  loadingDot.textContent = '正在加载语音引擎...';
+}
+
+// ══════════════════════════════════════════════════════
+//  4. 背景音乐 (Web Audio API)
+// ══════════════════════════════════════════════════════
+let audioCtx = null;
+let musicOn = true;
+let musicNodes = [];
+
+function startMusic() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const BPM = 128, beat = 60 / BPM;
+  const F = { C4:261.63,D4:293.66,E4:329.63,G4:392,A4:440,C5:523.25,D5:587.33,E5:659.25,G5:783.99,A5:880 };
+
+  const melody = [
+    ['G4',1,0],['A4',1,1],['C5',2,2],
+    ['E5',1,4],['D5',1,5],['C5',1,6],['A4',1,7],
+    ['G4',1,8],['E4',1,9],['G4',2,10],
+    ['A4',1,12],['C5',1,13],['D5',1,14],['C5',1,15],
+    ['A4',2,16],['G4',2,18],
+    ['C5',1,20],['D5',1,21],['E5',2,22],
+    ['G5',1,24],['E5',1,25],['D5',1,26],['C5',1,27],
+    ['A4',1,28],['G4',1,29],['A4',2,30],
+  ];
+  const totalBeats = 32;
+  const loopTime = totalBeats * beat;
+
+  function note(freq, t, dur, vol, type='sine') {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = type; o.frequency.setValueAtTime(freq, 0);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.88);
+    o.start(t); o.stop(t + dur + 0.05);
+    musicNodes.push(o, g);
+  }
+
+  function hat(t, vol=0.05) {
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*.5;
+    const s = audioCtx.createBufferSource();
+    const hpf = audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=8000;
+    const g = audioCtx.createGain();
+    s.buffer=buf; s.connect(hpf); hpf.connect(g); g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+0.05);
+    s.start(t); musicNodes.push(s, g);
+  }
+
+  function loop(t0) {
+    melody.forEach(([n, dur, dl]) => note(F[n], t0+dl*beat, dur*beat, 0.11));
+    const bass = ['C4','C4','G4','G4','A4','A4','G4','G4'];
+    bass.forEach((n,i) => note(F[n]/2, t0+i*4*beat, 4*beat, 0.08, 'triangle'));
+    for (let b=0;b<totalBeats;b++) {
+      const t = t0+b*beat;
+      if (b%4===0||b%4===2) note(150-(b%4===0?0:20), t, 0.1, 0.2);
+      hat(t, 0.05);
+      if (b%2===1) hat(t+beat*.5, 0.04);
+    }
+    setTimeout(() => loop(t0 + loopTime), (loopTime - 1) * 1000);
+  }
+  loop(audioCtx.currentTime + 0.1);
+}
+
+function stopMusic() {
+  musicNodes.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch(e){} });
+  musicNodes = [];
+  if (audioCtx) audioCtx.suspend();
+}
+
+// ══════════════════════════════════════════════════════
+//  5. 场景配置
+// ══════════════════════════════════════════════════════
+const SCENES = ['s1','s2','s3','s4','s5','s6','s7','s8'];
+const NARRATIONS = [
+  '欢迎来到，张崇会火锅！我们现在推出了全新的积分抽奖活动。只要你参与，就有机会赢取超丰富的奖品。来，让我带你了解一下，怎么玩！',
+  '首先，第一步。用你的手机号，扫描下方的二维码，注册一个账号。注册成功之后，你马上就会收到，一分积分。有了积分，就可以参与抽奖了！是不是，非常简单？',
+  '第二步，来赚更多积分！你可以把自己的专属邀请码，分享给你的朋友。每当有一位朋友，通过你的邀请码成功注册，你就会自动收到，一分积分。朋友越多，积分越多，抽奖机会，也就越多！',
+  '第三步。下次来张崇会火锅用餐，记得打卡！每次打卡，你就会多一分积分。来吃火锅，又好吃，又能赚积分，真的太划算了！',
+  '那积分，要怎么用来抽奖呢？很简单！一分积分，就可以参与一次抽奖。每天最多，可以抽三次。积分的有效期是九十天，记得要在期限内使用，不要浪费哦！',
+  '我们的奖品，真的超级丰富！有免费饮料，有现金折扣券，有免费甜品，还有非常受欢迎的双人套餐券，以及超吸引人的神秘福袋大奖！每一次抽奖，都有机会赢到好东西！',
+  '这里有几点温馨提醒。积分的有效期是九十天，过期就会自动归零，所以记得要及时使用。中奖之后，验证码要在三十天内，拿来店里给员工核销，才算有效哦！',
+  '好了，介绍完毕！还在等什么？马上拿起手机，扫描下面的二维码，立刻注册！注册就送积分，马上就可以抽奖。说不定，大奖，就是你的！张崇会火锅，等你来赢！',
+];
+
+// ══════════════════════════════════════════════════════
+//  6. 导航点
+// ══════════════════════════════════════════════════════
+const dotsEl = document.getElementById('dots');
+SCENES.forEach((_,i) => {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+});
+
+// ══════════════════════════════════════════════════════
+//  7. 语音 — 等讲完才换页
+// ══════════════════════════════════════════════════════
+let voiceOn = true;
+const subEl = document.getElementById('subtitle');
+
+function speak(text, onDone) {
+  if (!voiceOn || !text || !('speechSynthesis' in window)) {
+    subEl.textContent = ''; subEl.classList.remove('show');
+    if (onDone) setTimeout(onDone, 1200);
+    return;
+  }
+  speechSynthesis.cancel();
+  subEl.textContent = text;
+  subEl.classList.add('show');
+
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'zh-CN';
+  utt.rate = 0.78;
+  utt.pitch = 1.05;
+  utt.volume = 1;
+  if (selectedVoice) utt.voice = selectedVoice;
+
+  let fired = false;
+  function done() {
+    if (fired) return; fired = true;
+    subEl.classList.remove('show');
+    if (onDone) setTimeout(onDone, 1600);
+  }
+  utt.onend   = done;
+  utt.onerror = done;
+
+  // Chrome bug: speech sometimes silently stops; 设一个保底 timeout
+  const maxMs = Math.max(text.length * 380 + 3000, 8000);
+  const fallback = setTimeout(done, maxMs);
+  utt.onend = () => { clearTimeout(fallback); done(); };
+
+  // 先等 100ms 确保之前的 cancel 生效
+  setTimeout(() => speechSynthesis.speak(utt), 100);
+}
+
+// ══════════════════════════════════════════════════════
+//  8. 场景切换
+// ══════════════════════════════════════════════════════
+let current = 0;
+let busy = false;
+const fill = document.getElementById('progFill');
+
+function showScene(idx, autoNext) {
+  current = idx;
+  SCENES.forEach(id => document.getElementById(id).classList.remove('active'));
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('on', i===idx));
+  document.getElementById(SCENES[idx]).classList.add('active');
+
+  // 进度条
+  fill.style.transition = 'none'; fill.style.width = '0%';
+  const estMs = Math.max(NARRATIONS[idx].length * 350 + 3000, 8000);
+  requestAnimationFrame(() => {
+    fill.style.transition = `width ${estMs}ms linear`;
+    fill.style.width = '80%';
+  });
+
+  speak(NARRATIONS[idx], autoNext ? () => {
+    fill.style.transition = 'width 0.3s ease';
+    fill.style.width = '100%';
+    setTimeout(advance, 400);
+  } : null);
+}
+
+function advance() {
+  if (busy) return; busy = true;
+  speechSynthesis.cancel();
+  subEl.classList.remove('show');
+  const next = (current + 1) % SCENES.length;
+  // 先淡出当前
+  document.getElementById(SCENES[current]).classList.remove('active');
+  setTimeout(() => {
+    busy = false;
+    showScene(next, true);
+  }, 500); // 等淡出动画 0.5s 完成
+}
+
+function goTo(idx) {
+  if (busy) return;
+  busy = true;
+  speechSynthesis.cancel();
+  subEl.classList.remove('show');
+  document.getElementById(SCENES[current]).classList.remove('active');
+  setTimeout(() => {
+    busy = false;
+    showScene(idx, true);
+  }, 450);
+}
+
+// ══════════════════════════════════════════════════════
+//  9. 控制按钮
+// ══════════════════════════════════════════════════════
+document.getElementById('btnM').onclick = () => {
+  musicOn = !musicOn;
+  document.getElementById('btnM').classList.toggle('off', !musicOn);
+  if (musicOn) startMusic(); else stopMusic();
+};
+document.getElementById('btnV').onclick = () => {
+  voiceOn = !voiceOn;
+  document.getElementById('btnV').classList.toggle('off', !voiceOn);
+  if (!voiceOn) { speechSynthesis.cancel(); subEl.classList.remove('show'); }
+};
+// 点击内容区跳到下一页
+stage.addEventListener('click', e => {
+  if (e.target.closest('#ctrl') || e.target.closest('#startScreen') || e.target.closest('#dots')) return;
+  advance();
+});
+
+// ══════════════════════════════════════════════════════
+//  10. 开始按钮 — 等声音 ready 才启动
+// ══════════════════════════════════════════════════════
+const startScreen = document.getElementById('startScreen');
+const startBtn    = document.getElementById('startBtn');
+
+function startShow() {
+  // 开启 AudioContext（需要用户手势）
+  startMusic();
+
+  // 淡出开始屏幕
+  startScreen.classList.add('out');
+  setTimeout(() => { startScreen.style.display = 'none'; }, 750);
+
+  // 开始第一个场景
+  // 等 500ms 让屏幕淡出后再播，确保用户看到内容时语音才开始
+  setTimeout(() => showScene(0, true), 600);
+}
+
+startBtn.onclick   = startShow;
+startScreen.onclick = startShow;
+
+</script>
+</body>
+</html>
