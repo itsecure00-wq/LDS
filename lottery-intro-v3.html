@@ -640,117 +640,95 @@ html, body {
 
   <!-- ════ 吉祥物 ════ -->
   <div id="mascot">
-    <svg id="mascot-svg" viewBox="0 0 200 290" xmlns="http://www.w3.org/2000/svg">
+    <svg id="mascot-svg" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="sg" cx="38%" cy="32%" r="65%">
-          <stop offset="0%" stop-color="#FFD590"/>
-          <stop offset="100%" stop-color="#FFAA55"/>
+        <radialGradient id="skinG" cx="40%" cy="35%">
+          <stop offset="0%" stop-color="#F5DEB3"/>
+          <stop offset="100%" stop-color="#E8C89A"/>
         </radialGradient>
-        <radialGradient id="bg2" cx="38%" cy="32%" r="65%">
-          <stop offset="0%" stop-color="#FF7733"/>
-          <stop offset="100%" stop-color="#CC3300"/>
-        </radialGradient>
-        <linearGradient id="fg" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stop-color="#FF5500"/>
-          <stop offset="55%" stop-color="#FF9900"/>
-          <stop offset="100%" stop-color="#FFEE00"/>
-        </linearGradient>
-        <radialGradient id="eye-shine" cx="30%" cy="25%">
-          <stop offset="0%" stop-color="#2a1a00"/>
-          <stop offset="100%" stop-color="#0a0500"/>
+        <radialGradient id="bodyG" cx="40%" cy="35%">
+          <stop offset="0%" stop-color="#FF8C42"/>
+          <stop offset="100%" stop-color="#E67E22"/>
         </radialGradient>
       </defs>
 
       <!-- 阴影 -->
-      <ellipse class="m-shadow" cx="100" cy="287" rx="48" ry="9" fill="rgba(0,0,0,0.28)"/>
+      <ellipse class="m-shadow" cx="100" cy="295" rx="50" ry="10" fill="rgba(0,0,0,0.28)"/>
 
       <g id="mascot-full">
-        <!-- 腿（左右）-->
-        <rect x="70" y="238" width="23" height="36" rx="11.5" fill="#BB2D00"/>
-        <rect x="107" y="238" width="23" height="36" rx="11.5" fill="#BB2D00"/>
-        <!-- 鞋子 -->
-        <ellipse cx="81.5" cy="274" rx="17" ry="8" fill="#8B1A00"/>
-        <ellipse cx="118.5" cy="274" rx="17" ry="8" fill="#8B1A00"/>
+        <!-- 腿（短粗可爱） -->
+        <rect x="75" y="245" width="18" height="38" rx="9" fill="#E67E22"/>
+        <rect x="107" y="245" width="18" height="38" rx="9" fill="#E67E22"/>
+        <!-- 脚 -->
+        <ellipse cx="84" cy="283" rx="14" ry="7" fill="#CC6B1D"/>
+        <ellipse cx="116" cy="283" rx="14" ry="7" fill="#CC6B1D"/>
 
-        <!-- 身体 -->
-        <ellipse cx="100" cy="212" rx="55" ry="47" fill="url(#bg2)"/>
-        <!-- 肚皮亮光 -->
-        <ellipse cx="96" cy="204" rx="27" ry="22" fill="rgba(255,255,255,0.17)"/>
+        <!-- 身体（小） -->
+        <ellipse cx="100" cy="215" rx="46" ry="45" fill="url(#bodyG)"/>
+        <!-- 围裙 -->
+        <ellipse cx="100" cy="225" rx="32" ry="28" fill="#FF6B6B"/>
+        <path d="M 85 225 Q 85 250 95 255 Q 100 260 105 255 Q 115 250 115 225" fill="rgba(255,255,255,0.2)"/>
 
-        <!-- 左手臂（屏幕左侧，肩膀在x=56） -->
+        <!-- 左手臂 -->
         <g id="arm-l">
-          <rect x="12" y="191" width="44" height="22" rx="11" fill="url(#bg2)"/>
-          <!-- 手掌 -->
-          <circle cx="10" cy="202" r="14" fill="url(#sg)"/>
-          <circle cx="5"  cy="196" r="7"  fill="url(#sg)"/>
-          <circle cx="4"  cy="208" r="6"  fill="url(#sg)"/>
+          <rect x="14" y="195" width="40" height="20" rx="10" fill="url(#bodyG)"/>
+          <circle cx="10" cy="205" r="12" fill="url(#skinG)"/>
         </g>
 
         <!-- 头部组 -->
         <g id="m-head">
-          <!-- 耳朵 -->
-          <circle cx="26"  cy="118" r="21" fill="url(#sg)"/>
-          <circle cx="174" cy="118" r="21" fill="url(#sg)"/>
-          <circle cx="26"  cy="118" r="12" fill="#FFB077"/>
-          <circle cx="174" cy="118" r="12" fill="#FFB077"/>
-
-          <!-- 头部主体 -->
-          <circle cx="100" cy="108" r="77" fill="url(#sg)"/>
-
-          <!-- 火焰头发 -->
-          <g id="m-flames">
-            <!-- 左火焰 -->
-            <path d="M 68 50 C 54 30,57 12,67 4 C 62 20,70 30,77 36 C 79 18,75 6,85 2 C 80 18,74 32,70 50 Z" fill="url(#fg)"/>
-            <!-- 中间大火焰 -->
-            <path d="M 100 34 C 85 14,88 -2,98 -8 C 93 8,100 18,107 26 C 110 8,107 -4,117 -8 C 112 8,107 20,100 34 Z" fill="url(#fg)"/>
-            <!-- 右火焰 -->
-            <path d="M 132 50 C 146 30,143 12,133 4 C 138 20,130 30,123 36 C 121 18,125 6,115 2 C 120 18,126 32,130 50 Z" fill="url(#fg)"/>
+          <!-- 厨师帽 -->
+          <g id="m-hat">
+            <rect x="50" y="10" width="100" height="35" rx="8" fill="white" opacity="0.95"/>
+            <ellipse cx="100" cy="45" rx="52" ry="8" fill="rgba(0,0,0,0.1)"/>
+            <path d="M 55 30 Q 58 20 70 22 Q 85 18 100 16 Q 115 18 130 22 Q 142 20 145 30" fill="#EEEEEE"/>
           </g>
 
-          <!-- 眼睛（左） -->
+          <!-- 头（大） -->
+          <circle cx="100" cy="110" r="70" fill="url(#skinG)"/>
+
+          <!-- 超大眼睛（左） -->
           <g id="m-eye-l">
-            <ellipse cx="76" cy="107" rx="21" ry="23" fill="white"/>
-            <circle cx="80" cy="111" r="14" fill="url(#eye-shine)"/>
-            <!-- 反光点 -->
-            <circle cx="85" cy="104" r="5.5" fill="white"/>
-            <circle cx="78" cy="117" r="3"   fill="rgba(255,255,255,0.6)"/>
+            <!-- 眼白 -->
+            <ellipse cx="72" cy="105" rx="28" ry="32" fill="white"/>
+            <!-- 瞳孔 -->
+            <circle cx="75" cy="110" r="18" fill="#4A90E2"/>
+            <!-- 高光 -->
+            <circle cx="82" cy="100" r="8" fill="white"/>
+            <circle cx="80" cy="120" r="3" fill="rgba(255,255,255,0.7)"/>
           </g>
 
-          <!-- 眼睛（右） -->
+          <!-- 超大眼睛（右） -->
           <g id="m-eye-r">
-            <ellipse cx="124" cy="107" rx="21" ry="23" fill="white"/>
-            <circle cx="128" cy="111" r="14" fill="url(#eye-shine)"/>
-            <circle cx="133" cy="104" r="5.5" fill="white"/>
-            <circle cx="126" cy="117" r="3"   fill="rgba(255,255,255,0.6)"/>
+            <ellipse cx="128" cy="105" rx="28" ry="32" fill="white"/>
+            <circle cx="125" cy="110" r="18" fill="#4A90E2"/>
+            <circle cx="118" cy="100" r="8" fill="white"/>
+            <circle cx="120" cy="120" r="3" fill="rgba(255,255,255,0.7)"/>
           </g>
+
+          <!-- 鼻子（小点） -->
+          <circle cx="100" cy="135" r="5" fill="#E8C89A"/>
+
+          <!-- 嘴巴（U型） -->
+          <path id="m-mouth" d="M 80 150 Q 100 170 120 150"
+                stroke="#C17A3A" stroke-width="4" fill="rgba(255,200,100,0.4)"
+                stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 舌头 -->
+          <ellipse cx="100" cy="162" rx="12" ry="8" fill="#FF9999" opacity="0.6"/>
+
+          <!-- 腮红（大） -->
+          <circle cx="50" cy="125" r="16" fill="#FFB3BA" opacity="0.5"/>
+          <circle cx="150" cy="125" r="16" fill="#FFB3BA" opacity="0.5"/>
 
           <!-- 眉毛 -->
-          <path d="M 56 85 Q 76 76 94 85" stroke="#7A3A00" stroke-width="4" fill="none" stroke-linecap="round"/>
-          <path d="M 106 85 Q 124 76 144 85" stroke="#7A3A00" stroke-width="4" fill="none" stroke-linecap="round"/>
-
-          <!-- 腮红 -->
-          <circle cx="51"  cy="129" r="18" fill="#FF9988" opacity="0.38"/>
-          <circle cx="149" cy="129" r="18" fill="#FF9988" opacity="0.38"/>
-
-          <!-- 鼻子 -->
-          <ellipse cx="100" cy="132" rx="6" ry="4" fill="#FFAA77"/>
-
-          <!-- 嘴巴（笑） -->
-          <path id="m-mouth" d="M 80 148 Q 100 170 120 148"
-                stroke="#7A3A00" stroke-width="4"
-                fill="rgba(220,90,70,0.3)" stroke-linecap="round"/>
-
-          <!-- 牙齿小点 -->
-          <ellipse cx="100" cy="153" rx="14" ry="7" fill="white" opacity="0.7"/>
+          <path d="M 55 85 Q 72 76 90 80" stroke="#C17A3A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M 110 80 Q 128 76 145 85" stroke="#C17A3A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
         </g>
 
-        <!-- 右手臂（屏幕右侧，肩膀在x=144，画在头部上层方便挥手） -->
+        <!-- 右手臂 -->
         <g id="arm-r">
-          <rect x="144" y="191" width="44" height="22" rx="11" fill="url(#bg2)"/>
-          <!-- 手掌 -->
-          <circle cx="190" cy="202" r="14" fill="url(#sg)"/>
-          <circle cx="195" cy="196" r="7"  fill="url(#sg)"/>
-          <circle cx="196" cy="208" r="6"  fill="url(#sg)"/>
+          <rect x="146" y="195" width="40" height="20" rx="10" fill="url(#bodyG)"/>
+          <circle cx="190" cy="205" r="12" fill="url(#skinG)"/>
         </g>
       </g>
     </svg>
