@@ -324,6 +324,131 @@ html, body {
   opacity: 1 !important;
   transform: translateY(0) scale(1) !important;
 }
+
+/* ══════════════════════════════════════════
+   吉祥物 — 可爱互动角色
+══════════════════════════════════════════ */
+#mascot {
+  position: absolute; bottom: 28px; left: 40px; z-index: 30;
+  width: 180px; height: 220px;
+  filter: drop-shadow(0 8px 24px #ff440044);
+}
+
+.mascot-body {
+  position: relative; width: 100%; height: 100%;
+}
+
+/* 头部 */
+.mascot-head {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 140px; height: 140px; border-radius: 50%;
+  background: linear-gradient(135deg, #ff7722, #ff5500);
+  box-shadow: inset -8px -8px 16px #cc4400, 0 12px 28px #ff440055;
+}
+
+/* 眼睛 */
+.mascot-eyes {
+  position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+  width: 80px; display: flex; gap: 28px;
+}
+.mascot-eye {
+  width: 20px; height: 28px; background: #fff;
+  border-radius: 50%; position: relative; overflow: hidden;
+}
+.mascot-pupil {
+  position: absolute; width: 12px; height: 14px;
+  background: #000; border-radius: 50%;
+  top: 4px; left: 4px; transition: all 0.3s;
+}
+.mascot-eye.wink { background: transparent; }
+.mascot-eye.wink .mascot-pupil { opacity: 0; }
+
+/* 嘴巴 */
+.mascot-mouth {
+  position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+  width: 50px; height: 24px;
+  border-radius: 0 0 50px 50px; border: none;
+  background: #fff; box-shadow: inset 0 -3px 8px rgba(0,0,0,0.2);
+}
+.mascot-mouth.smile::after {
+  content: ''; position: absolute; width: 45px; height: 12px;
+  border-radius: 50% 50% 0 0; border: 2px solid #333;
+  bottom: 2px; left: 50%; transform: translateX(-50%);
+}
+.mascot-mouth.surprise {
+  border-radius: 50%; width: 28px; height: 32px;
+  background: #fff;
+}
+
+/* 身体 */
+.mascot-torso {
+  position: absolute; top: 110px; left: 50%; transform: translateX(-50%);
+  width: 100px; height: 70px; border-radius: 50%;
+  background: linear-gradient(135deg, #ff8833, #ff6611);
+  box-shadow: inset -6px -6px 12px #cc5500, 0 8px 20px #ff440044;
+}
+
+/* 手臂 */
+.mascot-arms {
+  position: absolute; top: 130px; width: 100%; height: 40px;
+  left: 0;
+}
+.mascot-arm {
+  position: absolute; width: 50px; height: 30px;
+  background: linear-gradient(135deg, #ff7722, #ff5500);
+  border-radius: 50%; box-shadow: 0 4px 12px #ff440033;
+  top: 0;
+}
+.mascot-arm.left { left: -20px; }
+.mascot-arm.right { right: -20px; }
+
+/* 腿 */
+.mascot-legs {
+  position: absolute; bottom: 0; width: 100%; height: 50px;
+  display: flex; justify-content: center; gap: 16px;
+}
+.mascot-leg {
+  width: 24px; height: 50px; background: linear-gradient(135deg, #ff6611, #ff4400);
+  border-radius: 12px; box-shadow: 0 4px 12px #ff440033;
+}
+
+/* 吉祥物动画 */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-30px); }
+}
+@keyframes dance {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes wave {
+  0%, 100% { transform: rotate(-20deg); }
+  50% { transform: rotate(20deg); }
+}
+
+#mascot.bounce { animation: bounce 0.6s ease-in-out; }
+#mascot.dance { animation: dance 0.5s ease-in-out infinite; }
+#mascot.spin { animation: spin 0.8s ease-in-out; }
+#mascot.arm-wave .mascot-arm.right { animation: wave 0.6s ease-in-out; }
+
+/* 表情气泡 */
+.mascot-bubble {
+  position: absolute; top: -50px; right: -20px;
+  background: #fff; border-radius: 16px;
+  padding: 8px 14px; font-size: 32px;
+  white-space: nowrap; opacity: 0;
+  transition: opacity 0.3s;
+}
+.mascot-bubble.show { opacity: 1; }
+.mascot-bubble::after {
+  content: ''; position: absolute; bottom: -8px; right: 16px;
+  width: 0; height: 0; border-left: 8px solid transparent;
+  border-right: 0 solid transparent; border-top: 8px solid #fff;
+}
 </style>
 </head>
 <body>
@@ -488,6 +613,29 @@ html, body {
     </div>
     <div class="s8-url">tinyurl.com/HuiHotpotPermasJaya</div>
     <div class="s8-cta">🔥 扫码注册，免费抽奖！</div>
+  </div>
+
+  <!-- ════ 吉祥物 ════ -->
+  <div id="mascot">
+    <div class="mascot-body">
+      <div class="mascot-head">
+        <div class="mascot-eyes">
+          <div class="mascot-eye"><div class="mascot-pupil"></div></div>
+          <div class="mascot-eye"><div class="mascot-pupil"></div></div>
+        </div>
+        <div class="mascot-mouth smile"></div>
+      </div>
+      <div class="mascot-torso"></div>
+      <div class="mascot-arms">
+        <div class="mascot-arm left"></div>
+        <div class="mascot-arm right"></div>
+      </div>
+      <div class="mascot-legs">
+        <div class="mascot-leg left"></div>
+        <div class="mascot-leg right"></div>
+      </div>
+    </div>
+    <div class="mascot-bubble"></div>
   </div>
 
   <!-- ════ 进度条 + 导航点 ════ -->
@@ -730,7 +878,72 @@ function stopMusic() {
 }
 
 // ══════════════════════════════════════════════════════
-//  5. 场景配置
+//  5. 吉祥物控制
+// ══════════════════════════════════════════════════════
+const mascot = document.getElementById('mascot');
+const mascotEyes = mascot.querySelectorAll('.mascot-eye');
+const mascotMouth = mascot.querySelector('.mascot-mouth');
+const mascotBubble = mascot.querySelector('.mascot-bubble');
+
+function clearMascotAnimation() {
+  mascot.classList.remove('bounce', 'dance', 'spin', 'arm-wave');
+}
+
+function setMascotAction(sceneIdx) {
+  clearMascotAnimation();
+  mascotEyes.forEach(e => e.classList.remove('wink'));
+  mascotMouth.classList.remove('surprise');
+  mascotMouth.classList.add('smile');
+  mascotBubble.classList.remove('show');
+
+  switch(sceneIdx) {
+    case 0: // 开场
+      mascot.classList.add('bounce');
+      mascotBubble.textContent = '🎉';
+      mascotBubble.classList.add('show');
+      break;
+    case 1: // 注册
+      mascot.classList.add('dance');
+      mascotBubble.textContent = '📱';
+      mascotBubble.classList.add('show');
+      break;
+    case 2: // 邀请
+      mascot.classList.add('arm-wave');
+      mascotBubble.textContent = '🤝';
+      mascotBubble.classList.add('show');
+      break;
+    case 3: // 打卡
+      mascot.classList.add('bounce');
+      mascotBubble.textContent = '📍';
+      mascotBubble.classList.add('show');
+      break;
+    case 4: // 如何抽奖
+      mascot.classList.add('spin');
+      mascotBubble.textContent = '🎰';
+      mascotBubble.classList.add('show');
+      break;
+    case 5: // 奖品
+      mascot.classList.add('bounce');
+      mascotMouth.classList.remove('smile');
+      mascotMouth.classList.add('surprise');
+      mascotBubble.textContent = '🎁';
+      mascotBubble.classList.add('show');
+      break;
+    case 6: // 规则
+      mascotEyes.forEach(e => e.classList.add('wink'));
+      mascotBubble.textContent = '✅';
+      mascotBubble.classList.add('show');
+      break;
+    case 7: // 扫码
+      mascot.classList.add('arm-wave');
+      mascotBubble.textContent = '👉';
+      mascotBubble.classList.add('show');
+      break;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  6. 场景配置
 // ══════════════════════════════════════════════════════
 const SCENES = ['s1','s2','s3','s4','s5','s6','s7','s8'];
 const NARRATIONS = [
@@ -745,7 +958,7 @@ const NARRATIONS = [
 ];
 
 // ══════════════════════════════════════════════════════
-//  6. 导航点
+//  7. 导航点
 // ══════════════════════════════════════════════════════
 const dotsEl = document.getElementById('dots');
 SCENES.forEach((_,i) => {
@@ -756,7 +969,7 @@ SCENES.forEach((_,i) => {
 });
 
 // ══════════════════════════════════════════════════════
-//  7. 语音 — 支持桌面语音 + 手机定时器双模式
+//  8. 语音 — 支持桌面语音 + 手机定时器双模式
 // ══════════════════════════════════════════════════════
 let voiceOn = true;
 const subEl = document.getElementById('subtitle');
@@ -806,7 +1019,7 @@ function speak(text, sceneIdx, onDone) {
 }
 
 // ══════════════════════════════════════════════════════
-//  8. 场景切换
+//  9. 场景切换
 // ══════════════════════════════════════════════════════
 let current = 0;
 let busy = false;
@@ -828,6 +1041,9 @@ function showScene(idx, autoNext) {
 
   const sceneEl = document.getElementById(SCENES[idx]);
   sceneEl.classList.add('active');
+
+  // 吉祥物反应
+  setMascotAction(idx);
 
   // 元素逐个出现
   const items = sceneEl.querySelectorAll(':scope > *');
@@ -855,6 +1071,7 @@ function advance() {
   if (busy) return; busy = true;
   narrationAudio.pause();
   subEl.classList.remove('show');
+  clearMascotAnimation();
   const next = (current + 1) % SCENES.length;
   cleanScene(SCENES[current]);
   setTimeout(() => {
@@ -868,6 +1085,7 @@ function goTo(idx) {
   busy = true;
   narrationAudio.pause();
   subEl.classList.remove('show');
+  clearMascotAnimation();
   cleanScene(SCENES[current]);
   setTimeout(() => {
     busy = false;
@@ -876,7 +1094,7 @@ function goTo(idx) {
 }
 
 // ══════════════════════════════════════════════════════
-//  9. 控制按钮
+//  10. 控制按钮
 // ══════════════════════════════════════════════════════
 document.getElementById('btnM').onclick = () => {
   musicOn = !musicOn;
@@ -895,7 +1113,7 @@ stage.addEventListener('click', e => {
 });
 
 // ══════════════════════════════════════════════════════
-//  10. 开始按钮 — 等声音 ready 才启动
+//  11. 开始按钮 — 等声音 ready 才启动
 // ══════════════════════════════════════════════════════
 const startScreen = document.getElementById('startScreen');
 const startBtn    = document.getElementById('startBtn');
