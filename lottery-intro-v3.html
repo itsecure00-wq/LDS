@@ -673,15 +673,29 @@ SCENES.forEach((_,i) => {
 let voiceOn = true;
 const subEl = document.getElementById('subtitle');
 
-// 当语音不可用时，每个场景的显示时长（毫秒）
+// 每个场景显示时长（手机/无语音模式使用）
 const SCENE_DURATION = [7000, 9000, 9000, 9000, 10000, 9000, 9000, 9000];
 
+// 检测手机/平板 — 移动端跳过语音，直接用定时器
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
 function speak(text, sceneIdx, onDone) {
-  if (!voiceOn || !text || !('speechSynthesis' in window)) {
-    subEl.textContent = ''; subEl.classList.remove('show');
-    if (onDone) setTimeout(onDone, SCENE_DURATION[sceneIdx] || 8000);
+  const dur = SCENE_DURATION[sceneIdx] || 8000;
+
+  // 移动端模式：跳过语音，显示字幕 + 定时换页
+  if (IS_MOBILE || !voiceOn || !text || !('speechSynthesis' in window)) {
+    if (text && (IS_MOBILE || voiceOn)) {
+      subEl.textContent = text;
+      subEl.classList.add('show');
+      setTimeout(() => subEl.classList.remove('show'), dur - 1200);
+    } else {
+      subEl.textContent = ''; subEl.classList.remove('show');
+    }
+    if (onDone) setTimeout(onDone, dur);
     return;
   }
+
+  // 桌面语音模式
   speechSynthesis.cancel();
   subEl.textContent = text;
   subEl.classList.add('show');
@@ -694,31 +708,27 @@ function speak(text, sceneIdx, onDone) {
   if (selectedVoice) utt.voice = selectedVoice;
 
   let fired = false;
-  let noStartTimer = null;
   let safetyTimer = null;
 
   function done() {
     if (fired) return; fired = true;
-    clearTimeout(noStartTimer);
     clearTimeout(safetyTimer);
     subEl.classList.remove('show');
     if (onDone) setTimeout(onDone, 1400);
   }
 
-  // 如果 4 秒内语音没有开始（Android / 无中文语音）→ 切换到定时器模式
-  noStartTimer = setTimeout(() => {
-    safetyTimer = setTimeout(done, SCENE_DURATION[sceneIdx] || 8000);
-  }, 4000);
-
   utt.onstart = () => {
-    // 语音成功启动 → 等自然结束，加最长安全保障
-    clearTimeout(noStartTimer);
-    const maxMs = Math.max(text.length * 430 + 2000, 8000);
-    safetyTimer = setTimeout(done, maxMs);
+    // 语音启动成功 — 等 onend，同时设安全保障（场景时长 × 2）
+    safetyTimer = setTimeout(done, dur * 2);
   };
-
   utt.onend   = () => done();
   utt.onerror = () => done();
+
+  // 若 5 秒内 onstart 从未触发，直接用定时器
+  const noStartTimer = setTimeout(() => {
+    if (!fired) { safetyTimer = setTimeout(done, dur); }
+  }, 5000);
+  utt.onstart = () => { clearTimeout(noStartTimer); safetyTimer = setTimeout(done, dur * 2); };
 
   setTimeout(() => speechSynthesis.speak(utt), 100);
 }
