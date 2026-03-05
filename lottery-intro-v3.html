@@ -81,11 +81,8 @@ html, body {
 }
 .ss-hint { font-size:32px; color:#ffffff44; margin-top:28px; letter-spacing:2px; }
 
-/* 加载指示器 */
-#loadingDot {
-  font-size:28px; color:#ff880077; letter-spacing:2px;
-  margin-top:16px; min-height:40px;
-}
+/* 加载指示器 — 隐藏 */
+#loadingDot { display:none; }
 
 /* ══════════════════════════════════════════
    场景通用
@@ -859,14 +856,35 @@ function showScene(idx, autoNext) {
   } : null);
 }
 
+function endShow() {
+  // 播完最后一幕：停音乐、淡出舞台、回到开始画面
+  stopMusic();
+  narrationAudio.pause();
+  subEl.classList.remove('show');
+  SCENES.forEach(id => cleanScene(id));
+  // 淡出舞台
+  stage.style.transition = 'opacity 1.5s ease';
+  stage.style.opacity = '0';
+  setTimeout(() => {
+    stage.style.opacity = '1';
+    stage.style.transition = '';
+    // 重置回开始屏幕
+    startScreen.style.display = '';
+    startScreen.classList.remove('out');
+    current = 0;
+    busy = false;
+    musicOn = true;
+  }, 1600);
+}
+
 function advance() {
   if (busy) return; busy = true;
   narrationAudio.pause();
   subEl.classList.remove('show');
 
-  // Stop at last scene, don't loop
+  // 最后一幕结束 — 停音乐 + 关闭视频
   if (current >= SCENES.length - 1) {
-    busy = false;
+    endShow();
     return;
   }
   const next = current + 1;
