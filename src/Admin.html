@@ -127,7 +127,10 @@
       <div class="subtitle">后台管理系统</div>
       <div class="login-error" id="loginError">账号或密码错误</div>
       <input type="text" id="username" placeholder="账号">
-      <input type="password" id="password" placeholder="密码" onkeypress="if(event.keyCode==13)doLogin()">
+      <div style="position:relative;">
+        <input type="password" id="password" placeholder="密码" onkeypress="if(event.keyCode==13)doLogin()" style="padding-right:45px;">
+        <button type="button" onclick="togglePasswordVisibility('password')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#999;font-size:18px;">👁️</button>
+      </div>
       <button id="loginBtn" onclick="doLogin()">登 录</button>
       <div id="versionInfo" style="text-align:center;font-size:11px;color:#bbb;margin-top:15px;"></div>
     </div>
@@ -462,7 +465,7 @@
           <div class="form-group"><label>账号</label><input type="text" id="newStaffUsername"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>密码</label><input type="password" id="newStaffPassword"></div>
+          <div class="form-group"><label>密码</label><div style="position:relative;"><input type="password" id="newStaffPassword" style="padding-right:45px;"><button type="button" onclick="togglePasswordVisibility('newStaffPassword')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#999;font-size:16px;">👁️</button></div></div>
           <div class="form-group"><label>角色</label><select id="newStaffRole"><option value="Staff">Staff (仅核销)</option><option value="Manager">Manager (核销+发WA)</option><option value="Boss">Boss (全部权限)</option></select></div>
         </div>
         <button class="btn btn-success btn-block" onclick="addNewStaff()">添加员工</button>
@@ -476,7 +479,7 @@
         <input type="hidden" id="editStaffRow">
         <div class="form-group"><label>姓名</label><input type="text" id="editStaffName"></div>
         <div class="form-group"><label>账号</label><input type="text" id="editStaffUsername"></div>
-        <div class="form-group"><label>新密码（留空则不修改）</label><input type="password" id="editStaffPassword" placeholder="留空不修改"></div>
+        <div class="form-group"><label>新密码（留空则不修改）</label><div style="position:relative;"><input type="password" id="editStaffPassword" placeholder="留空不修改" style="padding-right:45px;"><button type="button" onclick="togglePasswordVisibility('editStaffPassword')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#999;font-size:16px;">👁️</button></div></div>
         <div class="form-group"><label>角色</label><select id="editStaffRole" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;"><option value="Staff">Staff (仅核销)</option><option value="Manager">Manager (核销+发WA)</option><option value="Boss">Boss (全部权限)</option></select></div>
         <div style="display:flex;gap:10px;margin-top:16px;">
           <button class="btn btn-success" style="flex:1;" onclick="saveEditStaff()">💾 保存</button>
@@ -1493,6 +1496,18 @@
       }).withFailureHandler(function() {
         div.innerHTML = '<div class="card" style="color:#cc0000;text-align:center;">操作失败</div>';
       }).addPointsToAll(pts, sessionToken);
+    }
+
+    function togglePasswordVisibility(inputId) {
+      var input = document.getElementById(inputId);
+      var button = event.target.closest('button');
+      if (input.type === 'password') {
+        input.type = 'text';
+        button.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        button.textContent = '👁️';
+      }
     }
   </script>
 </body>

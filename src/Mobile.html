@@ -140,7 +140,10 @@
       <div class="subtitle">移动管理端</div>
       <div class="login-error" id="loginError"></div>
       <input type="text" id="username" placeholder="账号" autocomplete="username">
-      <input type="password" id="password" placeholder="密码" autocomplete="current-password">
+      <div style="position:relative;margin-bottom:12px;">
+        <input type="password" id="password" placeholder="密码" autocomplete="current-password" style="padding-right:45px;">
+        <button type="button" onclick="togglePasswordVisibility('password')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#999;font-size:18px;">👁️</button>
+      </div>
       <button class="login-btn" id="loginBtn" onclick="doLogin()">登 录</button>
       <div class="version-info" id="versionInfo"></div>
     </div>
@@ -846,6 +849,18 @@
   document.getElementById('password').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') doLogin();
   });
+
+  function togglePasswordVisibility(inputId) {
+    var input = document.getElementById(inputId);
+    var button = event.target.closest('button');
+    if (input.type === 'password') {
+      input.type = 'text';
+      button.textContent = '🙈';
+    } else {
+      input.type = 'password';
+      button.textContent = '👁️';
+    }
+  }
 </script>
 </body>
 </html>
