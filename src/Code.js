@@ -4,14 +4,126 @@
  * 功能：15格抽奖、积分30天过期、防重复邀请、权限分级
  */
 
-var APP_VERSION = 'v52';
+var APP_VERSION = 'v54';
 var POINTS_EXPIRY_DAYS = 90;
 
 // ============ Web App 入口 ============
 function doGet(e) {
   var page = (e && e.parameter && e.parameter.page) || 'lottery';
   var ref = (e && e.parameter && e.parameter.ref) || '';
-  
+
+  // 🔑 公开 API 接口 (?page=api&key=zchhp2024)
+  if (page === 'api') {
+    var key = (e && e.parameter && e.parameter.key) || '';
+    var validKey = PropertiesService.getScriptProperties().getProperty('API_SECRET_KEY') || 'zchhp2024';
+    if (!validKey) {
+      return ContentService.createTextOutput(JSON.stringify({ error: 'API key not configured' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    if (key !== validKey) {
+      return ContentService.createTextOutput(JSON.stringify({ error: 'Unauthorized' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    var action = (e && e.parameter && e.parameter.action) || '';
+
+    // 查询验证码 (?page=api&key=xxx&action=query_code&code=ABC123)
+    if (action === 'query_code') {
+      var code = (e.parameter.code || '').trim();
+      if (!code) {
+        return ContentService.createTextOutput(JSON.stringify({ error: '缺少验证码参数' }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      try {
+        var result = queryCode(code);
+        return ContentService.createTextOutput(JSON.stringify(result))
+          .setMimeType(ContentService.MimeType.JSON);
+      } catch (err) {
+        return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    // 核销验证码 (?page=api&key=xxx&action=verify_code&code=ABC123&staff=POS)
+    if (action === 'verify_code') {
+      var code = (e.parameter.code || '').trim();
+      var staffName = (e.parameter.staff || 'POS系统').trim();
+      if (!code) {
+        return ContentService.createTextOutput(JSON.stringify({ success: false, message: '缺少验证码参数' }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      try {
+        var r = queryCode(code);
+        if (!r.found) {
+          return ContentService.createTextOutput(JSON.stringify({ success: false, message: '验证码不存在' }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+        if (r.status === '已核销') {
+          return ContentService.createTextOutput(JSON.stringify({ success: false, message: '此验证码已核销', verifyTime: r.verifyTime, verifyBy: r.verifyBy }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+        if (r.status === '已过期') {
+          return ContentService.createTextOutput(JSON.stringify({ success: false, message: '验证码已过期' }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+        // 时间限制：只允许周一至周四
+        var tz = 'Asia/Kuala_Lumpur';
+        var dayNum = parseInt(Utilities.formatDate(new Date(), tz, 'u'));
+        if (dayNum > 4) {
+          var dayNames = {5: '星期五', 6: '星期六', 7: '星期日'};
+          return ContentService.createTextOutput(JSON.stringify({ success: false, message: '核销时间限制：每周一至周四才可兑换，今天是' + dayNames[dayNum] }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+        // 执行核销
+        var sh = getSheet(SH.RECORDS);
+        sh.getRange(r.row, 11).setValue('已核销');
+        sh.getRange(r.row, 12).setValue(new Date());
+        sh.getRange(r.row, 13).setValue(staffName);
+        addLog(staffName, 'API', '核销', '核销: ' + code + ' (' + r.prize + ')');
+        return ContentService.createTextOutput(JSON.stringify({ success: true, prize: r.prize, message: '核销成功！奖品: ' + r.prize }))
+          .setMimeType(ContentService.MimeType.JSON);
+      } catch (err) {
+        return ContentService.createTextOutput(JSON.stringify({ success: false, message: err.message }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    // 导出用户数据 (?page=api&key=xxx&action=export_users)
+    if (action === 'export_users') {
+      try {
+        var d = getSheet(SH.USERS).getDataRange().getValues();
+        var users = [];
+        for (var i = 1; i < d.length; i++) {
+          if (d[i][14] === '封禁') continue;
+          users.push({
+            user_id: d[i][0],
+            phone: String(d[i][1]),
+            name: d[i][2] || '',
+            email: d[i][3] || '',
+            register_time: d[i][4] ? Utilities.formatDate(new Date(d[i][4]), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd HH:mm') : '',
+            points: d[i][5] || 0,
+            total_points: d[i][7] || 0,
+            invite_code: d[i][8] || '',
+            status: d[i][14] || '正常'
+          });
+        }
+        return ContentService.createTextOutput(JSON.stringify({ users: users, total: users.length }))
+          .setMimeType(ContentService.MimeType.JSON);
+      } catch (err) {
+        return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    try {
+      var stats = getDetailedStats();
+      return ContentService.createTextOutput(JSON.stringify(stats))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (err) {
+      return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   if (page === 'admin') {
     return HtmlService.createTemplateFromFile('Admin').evaluate()
       .setTitle('后台管理').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -25,9 +137,8 @@ function doGet(e) {
   
   var t = HtmlService.createTemplateFromFile('Lottery');
   t.referrerCode = ref;
-  return t.evaluate().setTitle('🧧 新春抽奖')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return t.evaluate().setTitle('张崇会火锅 百万镇分店 抽奖活动')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function include(f) { return HtmlService.createHtmlOutputFromFile(f).getContent(); }
@@ -40,7 +151,8 @@ var SH = {
   INVITES: '邀请记录',
   STAFF: '员工账号',
   LOGS: '操作日志',
-  POINTS: '积分明细'
+  POINTS: '积分明细',
+  CHECKINS: '到店打卡'
 };
 
 // ============ 工具函数 ============
@@ -62,7 +174,8 @@ function initHeaders(sh, n) {
     '邀请记录': ['邀请ID','时间','邀请人手机','邀请人姓名','被邀请人手机','被邀请人姓名','获得积分','状态'],
     '员工账号': ['员工ID','姓名','账号','密码','角色','状态','创建时间','最后登录'],
     '操作日志': ['日志ID','时间','操作员','角色','动作','详情'],
-    '积分明细': ['明细ID','用户手机','获得时间','过期时间','原始积分','剩余积分','来源']
+    '积分明细': ['明细ID','用户手机','获得时间','过期时间','原始积分','剩余积分','来源'],
+    '到店打卡': ['打卡ID','时间','手机','姓名','设备指纹','备注']
   };
   if (h[n]) {
     sh.appendRow(h[n]);
@@ -616,6 +729,70 @@ function doLottery(phone) {
   };
 }
 
+// ============ 到店打卡 ============
+
+function checkIn(phone, deviceId) {
+  var v = validatePhone(phone);
+  if (!v.valid) return { success: false, message: '手机号无效' };
+  var p = v.phone;
+
+  var today = Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd');
+  var sh = getSheet(SH.CHECKINS);
+  var d = sh.getDataRange().getValues();
+
+  // 检查今天是否已打卡（手机号或设备指纹）
+  for (var i = 1; i < d.length; i++) {
+    if (!d[i][1]) continue;
+    var checkDate = Utilities.formatDate(new Date(d[i][1]), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd');
+    if (checkDate !== today) continue;
+    if (String(d[i][2]) === p) return { success: false, alreadyCheckedIn: true };
+    if (deviceId && String(d[i][4]) === deviceId) return { success: false, alreadyCheckedIn: true };
+  }
+
+  // 判断是否首次到店（推荐人奖励用）
+  var isFirstVisit = true;
+  for (var j = 1; j < d.length; j++) {
+    if (String(d[j][2]) === p) { isFirstVisit = false; break; }
+  }
+
+  // 取用户姓名和推荐人
+  var userName = '';
+  var referrerPhone = '';
+  var ush = getSheet(SH.USERS);
+  var ud = ush.getDataRange().getValues();
+  for (var k = 1; k < ud.length; k++) {
+    if (String(ud[k][1]) === p) {
+      userName = ud[k][2] || '';
+      referrerPhone = String(ud[k][9] || '');
+      break;
+    }
+  }
+
+  // 记录打卡
+  var id = 'CI' + Utilities.getUuid().substring(0, 8);
+  sh.appendRow([id, new Date(), p, userName, deviceId || '', '到店打卡']);
+
+  // 给顾客加1积分
+  addPointsToUser(p, 1, '到店打卡');
+
+  // 首次到店 → 给推荐人加1积分
+  var referrerBonusGiven = false;
+  if (isFirstVisit && referrerPhone && referrerPhone !== p && referrerPhone !== '') {
+    addPointsToUser(referrerPhone, 1, '推荐到店奖励');
+    addLog('System', '', '推荐到店奖励', referrerPhone + ' 的推荐用户 ' + p + ' 首次到店');
+    referrerBonusGiven = true;
+  }
+
+  addLog('System', '', '到店打卡', p + ' 打卡成功，首次=' + isFirstVisit);
+
+  return {
+    success: true,
+    firstVisit: isFirstVisit,
+    referrerBonus: referrerBonusGiven,
+    message: '打卡成功！获得1次抽奖机会 🎉'
+  };
+}
+
 // ============ 后台管理 ============
 
 // 登录验证（带权限）
@@ -713,6 +890,14 @@ function verifyCode(code, sessionToken) {
   if (!r.found) return { success: false, message: '验证码不存在' };
   if (r.status === '已核销') return { success: false, message: '此验证码已核销', verifyTime: r.verifyTime, verifyBy: r.verifyBy };
   if (r.status === '已过期') return { success: false, message: '验证码已过期' };
+
+  // 时间限制：只允许周一至周四核销兑换
+  var tz = 'Asia/Kuala_Lumpur';
+  var dayNum = parseInt(Utilities.formatDate(new Date(), tz, 'u')); // 1=周一, 7=周日
+  if (dayNum > 4) {
+    var dayNames = {5: '星期五', 6: '星期六', 7: '星期日'};
+    return { success: false, message: '⚠️ 核销时间限制\n每周一至周四才可兑换奖品\n今天是' + dayNames[dayNum] + '，请顾客改天再来 😊' };
+  }
 
   var sh = getSheet(SH.RECORDS);
   sh.getRange(r.row, 11).setValue('已核销');
@@ -926,11 +1111,13 @@ function getDetailedStats() {
   }
 
   // ---- 今日抽奖次数 & 核销 ----
-  var todayDraws2 = 0, todayVerified = 0, totalVerified = 0, totalPending = 0;
+  var todayDraws2 = 0, todayVerified = 0, totalVerified = 0, totalPending = 0, pendingWA = 0;
   for (var r2 = 1; r2 < rec.length; r2++) {
     if (rec[r2][1] && Utilities.formatDate(new Date(rec[r2][1]), tz, 'yyyy-MM-dd') === todayStr) todayDraws2++;
     if (rec[r2][10] === '已核销') { totalVerified++; if (rec[r2][11] && Utilities.formatDate(new Date(rec[r2][11]), tz, 'yyyy-MM-dd') === todayStr) todayVerified++; }
     if (rec[r2][10] === '未核销') totalPending++;
+    var waStatus = rec[r2][8] || '待发送';
+    if (waStatus === '待发送' && rec[r2][10] === '未核销') pendingWA++;
   }
 
   var drawDates = Object.keys(dailyDraws);
@@ -945,6 +1132,7 @@ function getDetailedStats() {
     todayVerified: todayVerified,
     totalVerified: totalVerified,
     totalPending: totalPending,
+    pendingWA: pendingWA,
     verifyRate: rec.length > 1 ? Math.round(totalVerified / (rec.length - 1) * 100) : 0,
     dates: drawDates,
     drawCounts: drawCounts,
