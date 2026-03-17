@@ -14,7 +14,7 @@
     
     /* 灯笼 */
     .lanterns { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 15px; pointer-events: none; z-index: 100; }
-    .lantern { font-size: 144px; animation: swing 3s ease-in-out infinite; }
+    .lantern { font-size: 36px; animation: swing 3s ease-in-out infinite; }
     @keyframes swing { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
     
     /* 飘落 */
@@ -23,45 +23,45 @@
     @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
     
     /* 音乐按钮 */
-    .music-btn { position: fixed; top: 12px; right: 12px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,215,0,0.9); border: none; font-size: 80px; cursor: pointer; z-index: 200; }
+    .music-btn { position: fixed; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,215,0,0.9); border: none; font-size: 18px; cursor: pointer; z-index: 200; }
     
     /* 头部 */
-    .store-header { background: linear-gradient(135deg, #e84a0e 0%, #f26522 50%, #f58220 100%); border-radius: 16px; padding: 30px 20px; text-align: center; margin-bottom: 15px; position: relative; z-index: 10; box-shadow: 0 6px 20px rgba(232,74,14,0.4); overflow: hidden; }
+    .store-header { background: linear-gradient(135deg, #e84a0e 0%, #f26522 50%, #f58220 100%); border-radius: 12px; padding: 14px 12px; text-align: center; margin-bottom: 10px; position: relative; z-index: 10; box-shadow: 0 4px 14px rgba(232,74,14,0.4); overflow: hidden; }
     .store-header::before { content: ''; position: absolute; top: -50%; right: -20%; width: 200px; height: 200px; background: rgba(255,255,255,0.08); border-radius: 50%; }
-    .store-name-cn { font-size: 92px; font-weight: 900; color: #fff; letter-spacing: 2px; margin-bottom: 8px; text-shadow: 3px 3px 6px rgba(0,0,0,0.4); white-space: nowrap; }
-    .store-name-en { font-size: 48px; color: #fff; font-weight: 900; letter-spacing: 4px; margin-bottom: 8px; text-transform: uppercase; text-shadow: 2px 2px 4px rgba(0,0,0,0.4); white-space: nowrap; }
-    .store-branch { font-size: 36px; color: #ffd700; margin-bottom: 18px; letter-spacing: 4px; font-weight: bold; white-space: nowrap; }
-    .event-banner { background: rgba(0,0,0,0.3); border-radius: 25px; padding: 10px 20px; display: inline-block; border: 2px solid #ffd700; }
-    .event-banner-text { color: #fff; font-size: 52px; font-weight: bold; }
-    .event-banner-text .highlight { color: #ffd700; font-size: 56px; font-weight: 900; }
+    .store-name-cn { font-size: 26px; font-weight: 900; color: #fff; letter-spacing: 2px; margin-bottom: 6px; text-shadow: 2px 2px 4px rgba(0,0,0,0.4); }
+    .store-name-en { font-size: 13px; color: #fff; font-weight: 900; letter-spacing: 3px; margin-bottom: 6px; text-transform: uppercase; text-shadow: 1px 1px 3px rgba(0,0,0,0.4); }
+    .store-branch { font-size: 12px; color: #ffd700; margin-bottom: 10px; letter-spacing: 2px; font-weight: bold; }
+    .event-banner { background: rgba(0,0,0,0.3); border-radius: 20px; padding: 6px 14px; display: inline-block; border: 2px solid #ffd700; }
+    .event-banner-text { color: #fff; font-size: 14px; font-weight: bold; }
+    .event-banner-text .highlight { color: #ffd700; font-size: 16px; font-weight: 900; }
     
     /* 抽奖格子 */
     .lottery-section { background: #fff; border-radius: 16px; padding: 12px; margin-bottom: 12px; position: relative; z-index: 10; border: 3px solid #ff6600; }
-    .lottery-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-    .prize-cell { background: linear-gradient(135deg, #fff5f5, #ffe8e8); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 40px; color: #8b0000; font-weight: bold; border: 2px solid #ffcccc; padding: 8px 4px; text-align: center; min-height: 70px; transition: all 0.1s; }
+    .lottery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .prize-cell { background: linear-gradient(135deg, #fff5f5, #ffe8e8); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #8b0000; font-weight: bold; border: 1.5px solid #ffcccc; padding: 6px 4px; text-align: center; min-height: 60px; transition: all 0.1s; }
     .prize-cell.grand { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; border-color: #ffd700; }
-    .prize-cell .icon { font-size: 88px; margin-bottom: 2px; }
-    .prize-cell .name { font-size: 36px; line-height: 1.2; }
+    .prize-cell .icon { font-size: 22px; margin-bottom: 3px; }
+    .prize-cell .name { font-size: 10px; line-height: 1.2; }
     .prize-cell.active { transform: scale(1.08); box-shadow: 0 0 20px #ffd700; border-color: #ffd700 !important; z-index: 10; }
     
     /* 按钮 */
-    .bottom-btn { background: linear-gradient(135deg, #ffd700, #ffb800); color: #8b0000; border: none; border-radius: 25px; padding: 16px; font-size: 80px; font-weight: bold; width: 100%; cursor: pointer; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(255,215,0,0.4); position: relative; z-index: 10; }
-    .query-btn { background: rgba(255,255,255,0.2); color: #ffd700; border: 2px solid #ffd700; border-radius: 20px; padding: 10px; font-size: 56px; width: 100%; cursor: pointer; margin-bottom: 12px; position: relative; z-index: 10; }
+    .bottom-btn { background: linear-gradient(135deg, #ffd700, #ffb800); color: #8b0000; border: none; border-radius: 22px; padding: 13px 16px; font-size: 18px; font-weight: bold; width: 100%; cursor: pointer; margin-bottom: 8px; box-shadow: 0 4px 12px rgba(255,215,0,0.4); position: relative; z-index: 10; }
+    .query-btn { background: rgba(255,255,255,0.2); color: #ffd700; border: 2px solid #ffd700; border-radius: 18px; padding: 9px; font-size: 14px; width: 100%; cursor: pointer; margin-bottom: 10px; position: relative; z-index: 10; }
     
     /* 规则 */
     .rules-section { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px; margin-bottom: 12px; position: relative; z-index: 10; }
-    .rules-title { color: #ffd700; font-size: 52px; margin-bottom: 8px; text-align: center; }
-    .rules-list { font-size: 40px; color: #ffcccc; line-height: 1.7; list-style: none; }
+    .rules-title { color: #ffd700; font-size: 16px; margin-bottom: 6px; text-align: center; }
+    .rules-list { font-size: 12px; color: #ffcccc; line-height: 1.6; list-style: none; }
     .rules-list li { margin-bottom: 2px; }
     
     /* 条款 */
     .legal-section { background: rgba(0,0,0,0.4); border-radius: 12px; padding: 14px; margin-bottom: 12px; position: relative; z-index: 10; }
-    .legal-title { color: #ffd700; font-size: 52px; margin-bottom: 10px; text-align: center; border-bottom: 1px solid rgba(255,215,0,0.3); padding-bottom: 8px; }
-    .legal-content { font-size: 40px; color: rgba(255,255,255,0.7); line-height: 1.8; }
+    .legal-title { color: #ffd700; font-size: 15px; margin-bottom: 8px; text-align: center; border-bottom: 1px solid rgba(255,215,0,0.3); padding-bottom: 6px; }
+    .legal-content { font-size: 11px; color: rgba(255,255,255,0.7); line-height: 1.7; }
     .legal-content p { margin-bottom: 6px; }
     .legal-content strong { color: #ffd700; }
     
-    .disclaimer { font-size: 36px; color: rgba(255,255,255,0.35); text-align: center; padding: 10px; position: relative; z-index: 10; }
+    .disclaimer { font-size: 10px; color: rgba(255,255,255,0.35); text-align: center; padding: 8px; position: relative; z-index: 10; }
     
     /* 弹窗 */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.88); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
@@ -70,27 +70,27 @@
     
     /* 登记弹窗 */
     .register-modal .modal { background: linear-gradient(135deg, #fff, #f8f8f8); color: #333; }
-    .register-modal .modal h2 { color: #8b0000; font-size: 72px; margin-bottom: 15px; }
-    .form-group { margin-bottom: 14px; text-align: left; }
-    .form-group label { display: block; font-size: 48px; margin-bottom: 4px; color: #8b0000; font-weight: bold; }
-    .form-group input { width: 100%; padding: 11px; border: 2px solid #ddd; border-radius: 10px; font-size: 60px; }
-    .form-group .hint { font-size: 40px; color: #999; margin-top: 3px; }
-    .error-msg { color: #ff4444; font-size: 40px; margin-top: 3px; display: none; }
-    .register-btn { width: 100%; padding: 13px; background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; border: none; border-radius: 10px; font-size: 60px; font-weight: bold; cursor: pointer; }
-    .terms-notice { font-size: 36px; color: #999; margin-top: 12px; }
+    .register-modal .modal h2 { color: #8b0000; font-size: 20px; margin-bottom: 12px; }
+    .form-group { margin-bottom: 12px; text-align: left; }
+    .form-group label { display: block; font-size: 14px; margin-bottom: 4px; color: #8b0000; font-weight: bold; }
+    .form-group input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
+    .form-group .hint { font-size: 11px; color: #999; margin-top: 3px; }
+    .error-msg { color: #ff4444; font-size: 11px; margin-top: 3px; display: none; }
+    .register-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; cursor: pointer; }
+    .terms-notice { font-size: 11px; color: #999; margin-top: 10px; }
     
     /* 中奖弹窗 */
-    .result-modal .modal h2 { color: #ffd700; font-size: 80px; margin-bottom: 10px; }
-    .result-modal .prize-icon { font-size: 240px; display: block; margin-bottom: 8px; }
-    .result-modal .prize-name { font-size: 88px; font-weight: bold; color: #fff; margin-bottom: 15px; }
-    .result-modal .notice-box { background: rgba(255,255,255,0.95); color: #333; padding: 14px; border-radius: 12px; margin-bottom: 15px; text-align: left; font-size: 48px; line-height: 1.7; }
+    .result-modal .modal h2 { color: #ffd700; font-size: 22px; margin-bottom: 8px; }
+    .result-modal .prize-icon { font-size: 64px; display: block; margin-bottom: 6px; }
+    .result-modal .prize-name { font-size: 22px; font-weight: bold; color: #fff; margin-bottom: 12px; }
+    .result-modal .notice-box { background: rgba(255,255,255,0.95); color: #333; padding: 12px; border-radius: 10px; margin-bottom: 12px; text-align: left; font-size: 13px; line-height: 1.7; }
     .result-modal .notice-box .highlight { color: #cc0000; font-weight: bold; }
-    .result-modal .notice-box .wa-notice { background: #25D366; color: #fff; padding: 8px; border-radius: 8px; margin-top: 10px; text-align: center; font-size: 44px; }
-    .result-modal .share-box { background: rgba(255,215,0,0.15); border: 1px solid #ffd700; border-radius: 10px; padding: 12px; margin-bottom: 15px; }
-    .result-modal .share-box p { font-size: 44px; color: #ffd700; margin-bottom: 8px; }
-    .result-modal .invite-code { background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; font-family: monospace; font-size: 72px; font-weight: bold; color: #8b0000; letter-spacing: 3px; text-align: center; margin-bottom: 10px; }
-    .share-btn { width: 100%; background: linear-gradient(135deg, #25D366, #128C7E); color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 56px; cursor: pointer; }
-    .close-btn { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #8b0000; border: none; padding: 12px 30px; border-radius: 22px; font-size: 56px; font-weight: bold; cursor: pointer; }
+    .result-modal .notice-box .wa-notice { background: #25D366; color: #fff; padding: 7px; border-radius: 7px; margin-top: 8px; text-align: center; font-size: 12px; }
+    .result-modal .share-box { background: rgba(255,215,0,0.15); border: 1px solid #ffd700; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+    .result-modal .share-box p { font-size: 12px; color: #ffd700; margin-bottom: 6px; }
+    .result-modal .invite-code { background: rgba(255,255,255,0.95); padding: 8px; border-radius: 8px; font-family: monospace; font-size: 20px; font-weight: bold; color: #8b0000; letter-spacing: 3px; text-align: center; margin-bottom: 8px; }
+    .share-btn { width: 100%; background: linear-gradient(135deg, #25D366, #128C7E); color: #fff; border: none; padding: 10px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+    .close-btn { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #8b0000; border: none; padding: 10px 24px; border-radius: 20px; font-size: 14px; font-weight: bold; cursor: pointer; }
     
     /* 烟花 */
     .fireworks-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 999; }
@@ -113,68 +113,14 @@
     .cs-card { background: linear-gradient(160deg, #fff 0%, #fff8f0 100%); border-radius: 18px; box-shadow: 0 6px 24px rgba(0,0,0,0.25); padding: 12px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; border: 2px solid #ffd700; min-width: 150px; text-decoration: none; transition: transform 0.15s; }
     .cs-card:active { transform: scale(0.96); }
 
-    /* 手机端响应式 */
-    @media (max-width: 768px) {
-      .container { padding: 8px; }
-      .lantern { font-size: 40px; }
-      .music-btn { width: 32px; height: 32px; font-size: 20px; }
-      .store-header { padding: 14px 10px; border-radius: 12px; margin-bottom: 10px; }
-      .store-name-cn { font-size: 26px; }
-      .store-name-en { font-size: 14px; letter-spacing: 2px; }
-      .store-branch { font-size: 12px; letter-spacing: 2px; margin-bottom: 10px; }
-      .event-banner { padding: 6px 12px; }
-      .event-banner-text { font-size: 15px; }
-      .event-banner-text .highlight { font-size: 17px; }
-      .lottery-section { padding: 8px; margin-bottom: 8px; border-width: 2px; }
-      .lottery-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; }
-      .prize-cell { min-height: 55px; padding: 6px 3px; border-width: 1.5px; }
-      .prize-cell .icon { font-size: 24px; }
-      .prize-cell .name { font-size: 11px; }
-      .bottom-btn { font-size: 18px; padding: 12px; border-radius: 20px; margin-bottom: 8px; }
-      .query-btn { font-size: 14px; padding: 8px; margin-bottom: 8px; }
-      .rules-section { padding: 10px; margin-bottom: 8px; }
-      .rules-title { font-size: 16px; margin-bottom: 6px; }
-      .rules-list { font-size: 12px; line-height: 1.6; }
-      .legal-section { padding: 10px; margin-bottom: 8px; }
-      .legal-title { font-size: 16px; margin-bottom: 8px; }
-      .legal-content { font-size: 11px; line-height: 1.6; }
-      .disclaimer { font-size: 10px; }
-      .modal { max-width: 92vw; padding: 16px; border-radius: 14px; }
-      .register-modal .modal h2 { font-size: 20px; margin-bottom: 10px; }
-      .form-group { margin-bottom: 10px; }
-      .form-group label { font-size: 14px; margin-bottom: 3px; }
-      .form-group input { padding: 10px; font-size: 16px; border-radius: 8px; }
-      .form-group .hint { font-size: 11px; }
-      .error-msg { font-size: 11px; }
-      .register-btn { padding: 11px; font-size: 16px; border-radius: 8px; }
-      .terms-notice { font-size: 10px; margin-top: 8px; }
-      .result-modal .modal h2 { font-size: 22px; margin-bottom: 8px; }
-      .result-modal .prize-icon { font-size: 64px; margin-bottom: 6px; }
-      .result-modal .prize-name { font-size: 22px; margin-bottom: 10px; }
-      .result-modal .notice-box { padding: 10px; font-size: 12px; margin-bottom: 10px; }
-      .result-modal .notice-box .wa-notice { font-size: 12px; padding: 6px; }
-      .result-modal .share-box { padding: 10px; margin-bottom: 10px; }
-      .result-modal .share-box p { font-size: 12px; }
-      .result-modal .invite-code { font-size: 20px; padding: 8px; letter-spacing: 2px; }
-      .share-btn { font-size: 14px; padding: 10px; }
-      .close-btn { font-size: 14px; padding: 10px 24px; }
-      .qr-code-title { font-size: 14px; }
-      .verification-code-text { font-size: 18px; }
-      .qr-instruction { font-size: 11px; }
-      .cs-widget { bottom: 12px; right: 8px; }
-      .cs-card { padding: 8px 10px; gap: 6px; min-width: 120px; }
-      .cs-avatar { width: 36px; height: 36px; font-size: 20px; }
-      .cs-name { font-size: 13px; }
-      .cs-role { font-size: 10px; }
-    }
     .cs-avatar-wrap { position: relative; flex-shrink: 0; }
-    .cs-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #cc0000, #8b0000); display: flex; align-items: center; justify-content: center; font-size: 104px; border: 2px solid #ffd700; }
-    .cs-online-dot { position: absolute; bottom: 1px; right: 1px; width: 12px; height: 12px; background: #4caf50; border-radius: 50%; border: 2px solid #fff; animation: cs-blink 2s ease-in-out infinite; }
+    .cs-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #cc0000, #8b0000); display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid #ffd700; }
+    .cs-online-dot { position: absolute; bottom: 1px; right: 1px; width: 10px; height: 10px; background: #4caf50; border-radius: 50%; border: 2px solid #fff; animation: cs-blink 2s ease-in-out infinite; }
     @keyframes cs-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
     .cs-info { flex: 1; }
-    .cs-name { font-size: 52px; font-weight: 700; color: #8b0000; }
-    .cs-role { font-size: 40px; color: #999; margin-top: 1px; }
-    .cs-status { font-size: 40px; color: #4caf50; font-weight: 600; margin-top: 3px; }
+    .cs-name { font-size: 14px; font-weight: 700; color: #8b0000; }
+    .cs-role { font-size: 11px; color: #999; margin-top: 1px; }
+    .cs-status { font-size: 11px; color: #4caf50; font-weight: 600; margin-top: 2px; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
