@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔧 张崇会火锅 - 后台管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Microsoft YaHei', sans-serif; background: #f0f2f5; min-height: 100vh; }
+    
+    .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #8b0000, #5c0000); }
+    .login-box { background: #fff; padding: 35px; border-radius: 16px; width: 90%; max-width: 360px; }
+    .login-box h1 { text-align: center; color: #8b0000; margin-bottom: 8px; }
+    .login-box .subtitle { text-align: center; color: #999; font-size: 12px; margin-bottom: 25px; }
+    .login-box input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 15px; margin-bottom: 15px; outline: none; }
+    .login-box input:focus { border-color: #8b0000; }
+    .login-box button { width: 100%; padding: 13px; background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+    .login-error { color: #cc0000; text-align: center; margin-bottom: 12px; font-size: 13px; display: none; }
+    
+    .admin-page { display: none; }
+    .admin-header { background: linear-gradient(135deg, #8b0000, #cc0000); color: #fff; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .admin-header h1 { font-size: 20px; }
+    .admin-header .user-info { display: flex; align-items: center; gap: 12px; font-size: 15px; }
+    .role-badge { padding: 5px 12px; border-radius: 10px; font-size: 13px; }
+    .role-badge.Boss, .role-badge.Admin { background: #ffd700; color: #8b0000; }
+    .role-badge.Manager { background: #4caf50; color: #fff; }
+    .role-badge.Staff { background: #2196f3; color: #fff; }
+    .logout-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    
+    .stats-container { padding: 15px; background: linear-gradient(135deg, #8b0000, #a00000); }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .stat-card { background: rgba(255,255,255,0.15); padding: 16px; border-radius: 10px; text-align: center; color: #fff; }
+    .stat-card .number { font-size: 30px; font-weight: bold; color: #ffd700; }
+    .stat-card .label { font-size: 14px; opacity: 0.9; }
+    
+    .tabs { display: flex; background: #fff; border-bottom: 1px solid #e0e0e0; overflow-x: auto; }
+    .tab-btn { flex: none; padding: 18px 22px; border: none; background: none; font-size: 16px; cursor: pointer; border-bottom: 3px solid transparent; color: #666; }
+    .tab-btn.active { color: #8b0000; border-bottom-color: #8b0000; font-weight: bold; }
+    .tab-btn.hidden { display: none; }
+    .tab-content { display: none; padding: 15px; }
+    .tab-content.active { display: block; }
+    
+    .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+    .card h3 { color: #8b0000; margin-bottom: 16px; font-size: 19px; padding-bottom: 12px; border-bottom: 2px solid #f0e0e0; }
+    
+    .verify-section { background: linear-gradient(135deg, #fff9e6, #fff3cc); border: 2px solid #ffd700; border-radius: 12px; padding: 16px; margin-bottom: 15px; }
+    .verify-input { display: flex; gap: 10px; }
+    .verify-input input { flex: 1; padding: 16px; border: 2px solid #ffd700; border-radius: 10px; font-size: 20px; font-family: monospace; text-transform: uppercase; text-align: center; }
+    .verify-input button { padding: 18px 30px; background: #8b0000; color: #fff; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
+    .verify-result { margin-top: 15px; padding: 16px; border-radius: 12px; display: none; }
+    .verify-result.success { display: block; background: #e8f5e9; border: 2px solid #4caf50; }
+    .verify-result.error { display: block; background: #ffebee; border: 2px solid #f44336; }
+    .verify-result.warning { display: block; background: #fff3e0; border: 2px solid #ff9800; }
+    .verify-result .status { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+    .verify-result.success .status { color: #2e7d32; }
+    .verify-result.error .status { color: #c62828; }
+    .verify-result.warning .status { color: #e65100; }
+    .verify-result .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 14px; }
+    .verify-result .info-item { background: rgba(255,255,255,0.7); padding: 10px; border-radius: 8px; }
+    .verify-result .info-item label { color: #666; font-size: 13px; display: block; }
+    .verify-result .info-item span { font-weight: bold; color: #333; }
+    .verify-btn { margin-top: 14px; padding: 16px; background: #4caf50; color: #fff; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; cursor: pointer; width: 100%; }
+    
+    .list-filter { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filter-btn { padding: 12px 20px; border: 1px solid #ddd; background: #fff; border-radius: 20px; font-size: 15px; cursor: pointer; }
+    .filter-btn.active { background: #8b0000; color: #fff; border-color: #8b0000; }
+    
+    .data-list { max-height: 400px; overflow-y: auto; }
+    .list-item { padding: 16px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+    .list-item:hover { background: #fafafa; }
+    .list-item .main-info { flex: 1; }
+    .list-item .title { font-weight: bold; color: #333; font-size: 16px; }
+    .list-item .code { font-family: monospace; color: #8b0000; background: #fff0f0; padding: 4px 10px; border-radius: 4px; font-size: 15px; }
+    .list-item .subtitle { font-size: 15px; color: #666; margin-top: 5px; }
+    .list-item .meta { font-size: 13px; color: #999; margin-top: 5px; }
+    .status-badge { padding: 7px 16px; border-radius: 14px; font-size: 14px; font-weight: bold; }
+    .status-badge.pending { background: #fff3e0; color: #e65100; }
+    .status-badge.verified { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.expired { background: #ffebee; color: #c62828; }
+    .status-badge.sent { background: #e3f2fd; color: #1565c0; }
+    
+    .data-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .data-table th, .data-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #e8e8e8; }
+    .data-table th { background: #f5f0f0; font-weight: bold; color: #8b0000; font-size: 14px; white-space: nowrap; }
+    .data-table input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; width: 100%; }
+    .data-table select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; }
+    .data-table tr:hover { background: #fff8f8; }
+    
+    .btn { padding: 14px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; }
+    .btn-primary { background: #8b0000; color: #fff; }
+    .btn-success { background: #4caf50; color: #fff; }
+    .btn-sm { padding: 10px 18px; font-size: 14px; }
+    .btn-block { width: 100%; padding: 18px; margin-top: 16px; font-size: 17px; }
+    
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 15px; color: #555; margin-bottom: 6px; font-weight: 500; }
+    .form-group input, .form-group select { width: 100%; padding: 13px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+    .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    
+    .empty-state { text-align: center; padding: 40px; color: #999; }
+    .empty-state .icon { font-size: 48px; }
+    
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .form-row { grid-template-columns: 1fr; }
+      .verify-input { flex-direction: column; }
+    }
+    .qr-scanner-container { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92); z-index: 3000; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    .qr-scanner-container.show { display: flex; }
+    .scanner-header { text-align: center; color: #fff; margin-bottom: 15px; }
+    .scanner-header h3 { font-size: 20px; margin-bottom: 5px; }
+    .scanner-header p { font-size: 14px; color: #ccc; }
+    #qr-reader { width: 100%; max-width: 500px; border-radius: 12px; overflow: hidden; }
+    #qr-reader video { border-radius: 12px; }
+    .scanner-close-btn { margin-top: 20px; padding: 14px 40px; background: #cc0000; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .scan-btn { padding: 16px 24px; background: #25a244; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    @media (max-width: 500px) {
+      .scan-btn { width: 100%; margin-top: 8px; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.4/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div class="login-page" id="loginPage">
+    <div class="login-box">
+      <h1>🍲 张崇会火锅</h1>
+      <div class="subtitle">后台管理系统</div>
+      <div class="login-error" id="loginError">账号或密码错误</div>
+      <input type="text" id="username" placeholder="账号">
+      <div style="position:relative;">
+        <input type="password" id="password" placeholder="密码" onkeypress="if(event.keyCode==13)doLogin()" style="padding-right:45px;">
+        <button type="button" onclick="togglePasswordVisibility('password')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#999;font-size:18px;width:auto;padding:0;">👁️</button>
+      </div>
+      <button id="loginBtn" onclick="doLogin()">登 录</button>
+      <div id="versionInfo" style="text-align:center;font-size:11px;color:#bbb;margin-top:15px;"></div>
+    </div>
+  </div>
+  
+  <div class="admin-page" id="adminPage">
+    <div class="admin-header">
+      <h1>🍲 后台管理 <span id="headerVersion" style="font-size:11px;opacity:0.7;"></span></h1>
+      <div class="user-info">
+        <span id="staffName">管理员</span>
+        <span class="role-badge" id="staffRole">Boss</span>
+        <button class="logout-btn" onclick="doLogout()">退出</button>
+      </div>
+    </div>
+    
+    <div class="stats-container">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="number" id="statUsers">-</div><div class="label">总用户</div></div>
+        <div class="stat-card"><div class="number" id="statToday">-</div><div class="label">今日抽奖</div></div>
+        <div class="stat-card"><div class="number" id="statPending">-</div><div class="label">待核销</div></div>
+        <div class="stat-card"><div class="number" id="statWA">-</div><div class="label">待发WA</div></div>
+      </div>
+    </div>
+    
+    <div class="tabs" id="tabsNav">
+      <button class="tab-btn active" data-tab="dashboard" data-role="Boss,Admin">📊 统计</button>
+      <button class="tab-btn" data-tab="verify">🎫 验票</button>
+      <button class="tab-btn" data-tab="records">📋 记录</button>
+      <button class="tab-btn" data-tab="whatsapp" data-role="Manager,Boss,Admin">📱 WhatsApp</button>
+      <button class="tab-btn" data-tab="expiry" data-role="Manager,Boss,Admin">⏰ 到期</button>
+      <button class="tab-btn" data-tab="customer" data-role="Manager,Boss,Admin">🔍 查询</button>
+      <button class="tab-btn" data-tab="points" data-role="Boss,Admin">💰 积分</button>
+      <button class="tab-btn" data-tab="prizes" data-role="Boss,Admin">🎁 奖品</button>
+      <button class="tab-btn" data-tab="music" data-role="Boss,Admin">🎵 音乐</button>
+      <button class="tab-btn" data-tab="staff" data-role="Boss,Admin">👤 员工</button>
+    </div>
+
+    <!-- 统计面板 -->
+    <div class="tab-content active" id="tab-dashboard">
+      <div class="card">
+        <h3>📊 今日概览</h3>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;" id="todayStats">
+          <div style="background:#fff9e6;border:2px solid #ffd700;border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:14px;color:#666;">📱 今日新用户</div>
+            <div style="font-size:36px;font-weight:bold;color:#8b0000;" id="dsTodayUsers">-</div>
+          </div>
+          <div style="background:#e8f5e9;border:2px solid #4caf50;border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:14px;color:#666;">🎰 今日抽奖</div>
+            <div style="font-size:36px;font-weight:bold;color:#2e7d32;" id="dsTodayDraws">-</div>
+          </div>
+          <div style="background:#e3f2fd;border:2px solid #2196f3;border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:14px;color:#666;">✅ 今日核销</div>
+            <div style="font-size:36px;font-weight:bold;color:#1565c0;" id="dsTodayVerified">-</div>
+          </div>
+          <div style="background:#fff3e0;border:2px solid #ff9800;border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:14px;color:#666;">⏳ 待核销总数</div>
+            <div style="font-size:36px;font-weight:bold;color:#e65100;" id="dsTotalPending">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📈 最近7天</h3>
+        <div id="chartArea"></div>
+      </div>
+
+      <div class="card">
+        <h3>🎁 奖品库存</h3>
+        <div id="prizeChartArea"></div>
+      </div>
+
+      <div class="card">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+          <div style="background:#f5f5f5;border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:13px;color:#666;">总用户</div>
+            <div style="font-size:28px;font-weight:bold;color:#333;" id="dsTotalUsers">-</div>
+          </div>
+          <div style="background:#f5f5f5;border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:13px;color:#666;">总抽奖</div>
+            <div style="font-size:28px;font-weight:bold;color:#333;" id="dsTotalDraws">-</div>
+          </div>
+          <div style="background:#f5f5f5;border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:13px;color:#666;">核销率</div>
+            <div style="font-size:28px;font-weight:bold;color:#333;" id="dsVerifyRate">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🧪 压力测试</h3>
+        <p style="font-size:13px;color:#666;margin-bottom:12px;">模拟100人同时抽奖，测试系统稳定性和库存一致性。</p>
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <button class="btn btn-primary" onclick="runLoadTest()" id="loadTestBtn">🚀 开始测试 (100人)</button>
+          <button class="btn" style="background:#ff9800;color:#fff;" onclick="cleanTest()" id="cleanTestBtn">🧹 清理测试数据</button>
+        </div>
+        <div id="loadTestResult" style="display:none;background:#f9f9f9;border:1px solid #ddd;border-radius:10px;padding:16px;font-size:14px;line-height:2;"></div>
+      </div>
+    </div>
+
+    <!-- 验票核销 -->
+    <div class="tab-content" id="tab-verify">
+      <div class="verify-section">
+        <h3 style="color:#8b0000;margin-bottom:12px;">🎫 输入验证码核销</h3>
+        <div class="verify-input">
+          <input type="text" id="verifyCode" placeholder="ZCH123456" maxlength="12" onkeypress="if(event.keyCode==13)queryCode()">
+          <button onclick="queryCode()">🔍 查询</button>
+          <button class="scan-btn" onclick="startQRScanner('verify')">📷 扫码</button>
+        </div>
+        <div class="verify-result" id="verifyResult">
+          <div class="status" id="verifyStatus"></div>
+          <div class="info-grid" id="verifyInfo"></div>
+          <button class="verify-btn" id="verifyBtn" onclick="confirmVerify()" style="display:none;">✅ 确认核销并发放奖品</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 中奖记录 -->
+    <div class="tab-content" id="tab-records">
+      <div class="card">
+        <h3>📋 中奖记录</h3>
+        <div class="list-filter">
+          <button class="filter-btn active" onclick="filterRecords('all',this)">全部</button>
+          <button class="filter-btn" onclick="filterRecords('pending',this)">待核销</button>
+          <button class="filter-btn" onclick="filterRecords('verified',this)">已核销</button>
+          <button class="filter-btn" onclick="filterRecords('expired',this)">已过期</button>
+        </div>
+        <div class="data-list" id="recordList"><div class="empty-state"><div class="icon">📋</div><p>加载中...</p></div></div>
+      </div>
+    </div>
+    
+    <!-- WhatsApp -->
+    <div class="tab-content" id="tab-whatsapp">
+      <div class="card">
+        <h3>📱 WhatsApp 验证码发送</h3>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="waSearchInput" placeholder="搜索 手机/姓名/验证码" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+          <button class="btn btn-primary" onclick="searchWA()" style="white-space:nowrap;">🔍 查询</button>
+          <button class="btn" onclick="clearWASearch()" style="white-space:nowrap;">清除</button>
+        </div>
+        <div class="list-filter">
+          <button class="filter-btn active" onclick="filterWA('pending',this)">待发送</button>
+          <button class="filter-btn" onclick="filterWA('sent',this)">已发送</button>
+          <button class="filter-btn" onclick="filterWA('all',this)">全部</button>
+        </div>
+        <div id="waSearchHint" style="display:none;padding:6px 10px;background:#fff3cd;border-radius:6px;font-size:12px;color:#856404;margin-bottom:8px;"></div>
+        <div class="data-list" id="waList"><div class="empty-state"><div class="icon">📱</div><p>加载中...</p></div></div>
+      </div>
+      <div class="card">
+        <h3>✉️ 手动发送</h3>
+        <div class="form-group">
+          <label>验证码</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <input type="text" id="waManualCode" placeholder="ZCH123456" style="flex:1;font-family:monospace;text-transform:uppercase;min-width:120px;">
+            <button class="btn btn-success" onclick="manualSendWA()">📤 发送</button>
+            <button class="scan-btn" onclick="startQRScanner('whatsapp')">📷 扫码</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📝 消息模板设置</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:12px;">
+          可用变量：<code>{prize}</code> 奖品名 | <code>{code}</code> 验证码 | <code>{expiry}</code> 有效期 | <code>{qrUrl}</code> 二维码链接
+        </p>
+        <div class="form-group">
+          <label>📤 首次发送模板</label>
+          <textarea id="waTplSend" rows="6" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>🔄 重发模板</label>
+          <textarea id="waTplResend" rows="6" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>⏰ 到期提醒模板</label>
+          <textarea id="waTplReminder" rows="6" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="saveWATemplates()">💾 保存模板</button>
+      </div>
+    </div>
+    
+    <!-- 奖品设置 -->
+    <div class="tab-content" id="tab-prizes">
+      <div class="card">
+        <h3>🎁 奖品配置 (15格)</h3>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="prizeTable">
+            <thead><tr><th>#</th><th>图标</th><th>奖品名称</th><th>库存</th><th>已发</th><th>剩余</th><th>权重</th><th>几率</th><th>大奖</th><th>状态</th></tr></thead>
+            <tbody id="prizeTableBody"></tbody>
+          </table>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="savePrizes()">💾 保存修改</button>
+      </div>
+      <div class="card">
+        <h3>➕ 添加奖品</h3>
+        <div class="form-row">
+          <div class="form-group"><label>名称</label><input type="text" id="newPrizeName" placeholder="特级肥牛"></div>
+          <div class="form-group"><label>图标</label><input type="text" id="newPrizeIcon" placeholder="🥩"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>库存</label><input type="number" id="newPrizeStock" value="50"></div>
+          <div class="form-group"><label>权重</label><input type="number" id="newPrizeWeight" value="10"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>价值(RM)</label><input type="number" id="newPrizeValue" value="10"></div>
+          <div class="form-group"><label>大奖</label><select id="newPrizeGrand"><option value="0">否</option><option value="1">是(红色格子)</option></select></div>
+        </div>
+        <button class="btn btn-success btn-block" onclick="addNewPrize()">添加奖品</button>
+      </div>
+    </div>
+    
+    <!-- 音乐设置 -->
+    <div class="tab-content" id="tab-music">
+      <div class="card">
+        <h3>🎵 背景音乐设置</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:15px;">
+          设置抽奖页面的背景音乐和音效。支持 MP3 格式的在线音乐链接。<br>
+          <b>推荐：</b>使用 Google Drive 或其他云存储的直接下载链接。
+        </p>
+        
+        <div class="form-group">
+          <label>🎶 背景音乐 URL</label>
+          <input type="text" id="bgMusicUrl" placeholder="https://example.com/music.mp3">
+          <div style="font-size:10px;color:#999;margin-top:5px;">新春喜庆音乐，循环播放</div>
+        </div>
+        
+        <div class="form-group">
+          <label>🧨 鞭炮音效 URL</label>
+          <input type="text" id="firecrackerUrl" placeholder="https://example.com/firecracker.mp3">
+          <div style="font-size:10px;color:#999;margin-top:5px;">炮竹/烟花音效</div>
+        </div>
+        
+        <div class="form-group">
+          <label>音乐开关</label>
+          <select id="musicEnabled" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
+            <option value="true">启用音乐按钮</option>
+            <option value="false">隐藏音乐按钮</option>
+          </select>
+        </div>
+        
+        <button class="btn btn-primary btn-block" onclick="saveMusicSettings()">💾 保存音乐设置</button>
+      </div>
+      
+      <div class="card">
+        <h3>📋 推荐免费音乐资源</h3>
+        <div style="font-size:12px;line-height:1.8;">
+          <p><b>1. 上传到 Google Drive：</b></p>
+          <ol style="margin-left:20px;margin-bottom:15px;">
+            <li>上传 MP3 文件到 Google Drive</li>
+            <li>右键 → 获取链接 → 设为「知道链接的人都可查看」</li>
+            <li>复制链接，将 <code>/view</code> 改为 <code>/uc?export=download</code></li>
+          </ol>
+          
+          <p><b>2. 免费音效网站：</b></p>
+          <ul style="margin-left:20px;">
+            <li><a href="https://freesound.org" target="_blank">Freesound.org</a> - 免费音效</li>
+            <li><a href="https://pixabay.com/music" target="_blank">Pixabay Music</a> - 免费背景音乐</li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>🔊 测试音乐</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:10px;">点击下方按钮测试音乐是否能正常播放</p>
+        <button class="btn btn-success" onclick="testBgMusic()" style="margin-right:10px;">▶️ 测试背景音乐</button>
+        <button class="btn btn-success" onclick="testFirecracker()">▶️ 测试鞭炮音效</button>
+        <button class="btn" onclick="stopTestMusic()" style="margin-left:10px;background:#999;color:#fff;">⏹️ 停止</button>
+        <div id="musicTestResult" style="margin-top:10px;font-size:12px;"></div>
+      </div>
+    </div>
+    
+    <!-- 到期提醒 -->
+    <div class="tab-content" id="tab-expiry">
+      <div class="card">
+        <h3>⏰ 即将过期提醒（7天内）</h3>
+        <p style="font-size:12px;color:#666;margin-bottom:12px;">列出7天内即将过期的奖品验证码和积分，可逐一发送WhatsApp提醒顾客。</p>
+        <button class="btn btn-primary btn-block" onclick="loadExpiryAlerts()" style="margin-bottom:12px;">🔍 刷新列表</button>
+        <div id="expiryAlertSummary" style="display:none;margin-bottom:12px;"></div>
+        <div class="list-filter" id="expiryFilter" style="display:none;">
+          <button class="filter-btn active" onclick="filterExpiry('all',this)">全部</button>
+          <button class="filter-btn" onclick="filterExpiry('prize',this)">🎫 奖品</button>
+          <button class="filter-btn" onclick="filterExpiry('points',this)">💰 积分</button>
+        </div>
+        <div class="data-list" id="expiryAlertList" style="max-height:600px;"><div class="empty-state"><div class="icon">⏰</div><p>点击上方按钮检查</p></div></div>
+      </div>
+    </div>
+
+    <!-- 顾客查询 -->
+    <div class="tab-content" id="tab-customer">
+      <div class="card">
+        <h3>🔍 顾客查询</h3>
+        <div style="display:flex;gap:8px;">
+          <input type="tel" id="custSearchPhone" placeholder="输入手机号 (如: 0123456789)" style="flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:15px;">
+          <button onclick="doSearchCustomer()" style="padding:12px 20px;background:#8b0000;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;white-space:nowrap;">查询</button>
+        </div>
+      </div>
+      <div id="custResult"></div>
+    </div>
+
+    <!-- 积分管理 -->
+    <div class="tab-content" id="tab-points">
+      <div class="card">
+        <h3>💰 指定用户加积分</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="tel" id="ptPhone" placeholder="手机号" style="flex:2;min-width:150px;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:15px;">
+          <input type="number" id="ptAmount" placeholder="积分" value="1" min="1" max="100" style="flex:1;min-width:80px;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:15px;">
+          <button onclick="doAddPoints()" style="padding:12px 20px;background:#4caf50;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;white-space:nowrap;">➕ 加积分</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>🎉 全员加积分</h3>
+        <p style="font-size:13px;color:#666;margin-bottom:12px;">给所有正常状态的会员批量加积分（每人最多10分）</p>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="ptAllAmount" placeholder="积分" value="1" min="1" max="10" style="flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:15px;">
+          <button onclick="doAddPointsAll()" style="padding:12px 20px;background:#ff9800;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;white-space:nowrap;">🎁 全员派发</button>
+        </div>
+      </div>
+      <div id="ptResult"></div>
+    </div>
+
+    <!-- 员工管理 -->
+    <div class="tab-content" id="tab-staff">
+      <div class="card">
+        <h3>👤 员工列表</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:12px;">
+          <b>Boss</b>: 全部权限 | <b>Manager</b>: 发验证码+核销+查积分 | <b>Staff</b>: 仅核销
+        </p>
+        <div class="data-list" id="staffList"></div>
+      </div>
+      <div class="card">
+        <h3>➕ 添加员工</h3>
+        <div class="form-row">
+          <div class="form-group"><label>姓名</label><input type="text" id="newStaffName"></div>
+          <div class="form-group"><label>账号</label><input type="text" id="newStaffUsername"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>密码</label><div style="position:relative;"><input type="password" id="newStaffPassword" style="padding-right:45px;"><button type="button" onclick="togglePasswordVisibility('newStaffPassword')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#999;font-size:16px;width:auto;padding:0;">👁️</button></div></div>
+          <div class="form-group"><label>角色</label><select id="newStaffRole"><option value="Staff">Staff (仅核销)</option><option value="Manager">Manager (核销+发WA)</option><option value="Boss">Boss (全部权限)</option></select></div>
+        </div>
+        <button class="btn btn-success btn-block" onclick="addNewStaff()">添加员工</button>
+      </div>
+    </div>
+
+    <!-- 编辑员工弹窗 -->
+    <div id="editStaffModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;color:#333;">
+        <h3 style="color:#8b0000;margin-bottom:16px;">✏️ 编辑员工</h3>
+        <input type="hidden" id="editStaffRow">
+        <div class="form-group"><label>姓名</label><input type="text" id="editStaffName"></div>
+        <div class="form-group"><label>账号</label><input type="text" id="editStaffUsername"></div>
+        <div class="form-group"><label>新密码（留空则不修改）</label><div style="position:relative;"><input type="password" id="editStaffPassword" placeholder="留空不修改" style="padding-right:45px;"><button type="button" onclick="togglePasswordVisibility('editStaffPassword')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#999;font-size:16px;width:auto;padding:0;">👁️</button></div></div>
+        <div class="form-group"><label>角色</label><select id="editStaffRole" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;"><option value="Staff">Staff (仅核销)</option><option value="Manager">Manager (核销+发WA)</option><option value="Boss">Boss (全部权限)</option></select></div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button class="btn btn-success" style="flex:1;" onclick="saveEditStaff()">💾 保存</button>
+          <button class="btn" style="flex:1;background:#999;color:#fff;" onclick="closeEditStaffModal()">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="qr-scanner-container" id="qrScannerContainer">
+      <div class="scanner-header">
+        <h3>📷 扫描验证码</h3>
+        <p>将二维码对准摄像头</p>
+      </div>
+      <div id="qr-reader"></div>
+      <button class="scanner-close-btn" onclick="stopQRScanner()">关闭扫描</button>
+    </div>
+  </div>
+
+  <script>
+    var currentStaff = null;
+    var sessionToken = null;
+    var currentCode = null;
+    var recordFilter = 'all';
+    var waFilter = 'pending';
+
+    // XSS防护：HTML转义
+    function esc(s) {
+      if (s == null) return '';
+      var d = document.createElement('div');
+      d.appendChild(document.createTextNode(String(s)));
+      return d.innerHTML;
+    }
+
+    // 前端缓存+防抖
+    var dataCache = {};
+    var CACHE_TTL = 30000; // 30秒缓存
+    function getCached(key) {
+      var c = dataCache[key];
+      if (c && (Date.now() - c.time < CACHE_TTL)) return c.data;
+      return null;
+    }
+    function setCache(key, data) {
+      dataCache[key] = { data: data, time: Date.now() };
+    }
+    function clearCache(key) {
+      if (key) delete dataCache[key]; else dataCache = {};
+    }
+    var debounceTimers = {};
+    function debounce(key, fn, delay) {
+      if (debounceTimers[key]) clearTimeout(debounceTimers[key]);
+      debounceTimers[key] = setTimeout(fn, delay || 300);
+    }
+    
+    // 加载版本号
+    google.script.run.withSuccessHandler(function(v) {
+      document.getElementById('versionInfo').textContent = '系统版本: ' + v;
+    }).getAppVersion();
+
+    // 刷新恢复登录状态
+    try {
+      var saved = sessionStorage.getItem('adminSession');
+      if (saved) {
+        var s = JSON.parse(saved);
+        if (s.staff && s.token) {
+          currentStaff = s.staff;
+          sessionToken = s.token;
+          showAdminPage();
+        }
+      }
+    } catch(e) {}
+
+    // Tab切换
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tab = this.getAttribute('data-tab');
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        this.classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+        if (tab === 'dashboard') loadDashboard();
+        if (tab === 'records') loadRecords();
+        if (tab === 'whatsapp') { loadWAList(); loadWATemplates(); }
+        if (tab === 'expiry') loadExpiryAlerts();
+        if (tab === 'prizes') loadPrizes();
+        if (tab === 'staff') loadStaff();
+        if (tab === 'music') loadMusicSettings();
+      });
+    });
+    
+    // 登录
+    function doLogin() {
+      var u = document.getElementById('username').value.trim();
+      var p = document.getElementById('password').value;
+      if (!u || !p) { alert('请输入账号和密码'); return; }
+
+      var btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = '登录中...';
+      document.getElementById('loginError').style.display = 'none';
+
+      google.script.run.withSuccessHandler(function(r) {
+        btn.disabled = false;
+        btn.textContent = '登 录';
+        if (r.success) {
+          currentStaff = r.staff;
+          sessionToken = r.sessionToken || null;
+          if (r.version) document.getElementById('headerVersion').textContent = r.version;
+          try { sessionStorage.setItem('adminSession', JSON.stringify({ staff: currentStaff, token: sessionToken })); } catch(e) {}
+          showAdminPage();
+        } else {
+          document.getElementById('loginError').textContent = r.message || '账号或密码错误';
+          document.getElementById('loginError').style.display = 'block';
+        }
+      }).withFailureHandler(function(e) {
+        btn.disabled = false;
+        btn.textContent = '登 录';
+        document.getElementById('loginError').textContent = '登录失败: ' + e;
+        document.getElementById('loginError').style.display = 'block';
+      }).adminLogin(u, p);
+    }
+    
+    function showAdminPage() {
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('adminPage').style.display = 'block';
+      document.getElementById('staffName').textContent = currentStaff.name;
+      document.getElementById('staffRole').textContent = currentStaff.role;
+      document.getElementById('staffRole').className = 'role-badge ' + currentStaff.role;
+      
+      // 权限控制
+      document.querySelectorAll('.tab-btn[data-role]').forEach(function(btn) {
+        var roles = btn.getAttribute('data-role').split(',');
+        if (roles.indexOf(currentStaff.role) === -1) {
+          btn.classList.add('hidden');
+        }
+      });
+
+      // 如果统计tab被隐藏（非Boss/Admin），切到验票tab
+      var dashTab = document.querySelector('.tab-btn[data-tab="dashboard"]');
+      if (dashTab && dashTab.classList.contains('hidden')) {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        document.querySelector('.tab-btn[data-tab="verify"]').classList.add('active');
+        document.getElementById('tab-verify').classList.add('active');
+      } else {
+        loadDashboard();
+      }
+
+      loadStats();
+    }
+    
+    function doLogout() {
+      currentStaff = null;
+      sessionToken = null;
+      try { sessionStorage.removeItem('adminSession'); } catch(e) {}
+      document.getElementById('loginPage').style.display = 'flex';
+      document.getElementById('adminPage').style.display = 'none';
+      document.getElementById('username').value = '';
+      document.getElementById('password').value = '';
+      document.getElementById('loginError').style.display = 'none';
+    }
+    
+    // 统计（带缓存）
+    function loadStats(force) {
+      if (!force) {
+        var cached = getCached('stats');
+        if (cached) { renderStats(cached); return; }
+      }
+      google.script.run.withSuccessHandler(function(s) {
+        setCache('stats', s);
+        renderStats(s);
+      }).getStatistics();
+    }
+    function renderStats(s) {
+      document.getElementById('statUsers').textContent = s.totalUsers || 0;
+      document.getElementById('statToday').textContent = s.todayDraws || 0;
+      document.getElementById('statPending').textContent = s.pending || 0;
+      document.getElementById('statWA').textContent = s.waPending || 0;
+    }
+    
+    // 验票
+    function queryCode() {
+      var code = document.getElementById('verifyCode').value.trim().toUpperCase();
+      if (!code) { alert('请输入验证码'); return; }
+      
+      google.script.run.withSuccessHandler(function(r) {
+        var div = document.getElementById('verifyResult');
+        var sta = document.getElementById('verifyStatus');
+        var info = document.getElementById('verifyInfo');
+        var btn = document.getElementById('verifyBtn');
+        
+        div.className = 'verify-result';
+        btn.style.display = 'none';
+        currentCode = null;
+        
+        if (!r.found) {
+          div.classList.add('error');
+          sta.textContent = '❌ 验证码不存在';
+          info.innerHTML = '';
+        } else if (r.status === '已核销') {
+          div.classList.add('warning');
+          sta.textContent = '⚠️ 已核销';
+          info.innerHTML = '<div class="info-item"><label>奖品</label><span>' + esc(r.prize) + '</span></div>' +
+            '<div class="info-item"><label>核销时间</label><span>' + esc(r.verifyTime) + '</span></div>' +
+            '<div class="info-item"><label>核销员</label><span>' + esc(r.verifyBy) + '</span></div>';
+        } else if (r.status === '已过期') {
+          div.classList.add('error');
+          sta.textContent = '❌ 验证码已过期';
+          info.innerHTML = '<div class="info-item"><label>奖品</label><span>' + esc(r.prize) + '</span></div>' +
+            '<div class="info-item"><label>有效期</label><span>' + esc(r.expiryDate) + '</span></div>';
+        } else {
+          div.classList.add('success');
+          sta.textContent = '✅ 验证码有效';
+          info.innerHTML = '<div class="info-item"><label>🎁 奖品</label><span style="color:#2e7d32;font-size:16px;">' + esc(r.prize) + '</span></div>' +
+            '<div class="info-item"><label>👤 顾客</label><span>' + esc(r.name || r.phone) + '</span></div>' +
+            '<div class="info-item"><label>📱 手机</label><span>' + esc(r.phone) + '</span></div>' +
+            '<div class="info-item"><label>📅 有效期</label><span>' + esc(r.expiryDate) + '</span></div>';
+          btn.style.display = 'block';
+          currentCode = code;
+        }
+      }).queryCode(code);
+    }
+    
+    function confirmVerify() {
+      if (!currentCode) return;
+      if (!confirm('确认核销并发放奖品？')) return;
+      
+      google.script.run.withSuccessHandler(function(r) {
+        if (r.success) {
+          alert('✅ 核销成功！\n\n请发放奖品: ' + r.prize);
+          document.getElementById('verifyCode').value = '';
+          document.getElementById('verifyResult').className = 'verify-result';
+          document.getElementById('verifyBtn').style.display = 'none';
+          currentCode = null;
+          clearCache();
+          loadStats(true);
+        } else {
+          alert('❌ ' + r.message);
+        }
+      }).verifyCode(currentCode, sessionToken);
+    }
+    
+    // 记录列表
+    function loadRecords() {
+      google.script.run.withSuccessHandler(function(r) {
+        renderRecords(r.records);
+      }).getRecordList(recordFilter, 1, 50);
+    }
+    
+    function filterRecords(f, btn) {
+      recordFilter = f;
+      document.querySelectorAll('#tab-records .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      loadRecords();
+    }
+    
+    function renderRecords(records) {
+      var list = document.getElementById('recordList');
+      if (!records || records.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>暂无记录</p></div>';
+        return;
+      }
+      list.innerHTML = records.map(function(r) {
+        var sc = r.status === '已核销' ? 'verified' : (r.status === '已过期' ? 'expired' : 'pending');
+        return '<div class="list-item">' +
+          '<div class="main-info">' +
+            '<div class="title"><span class="code">' + esc(r.code) + '</span> ' + esc(r.prize) + '</div>' +
+            '<div class="subtitle">📱 ' + esc(r.phone) + (r.name ? ' · ' + esc(r.name) : '') + '</div>' +
+            '<div class="meta">抽奖: ' + esc(r.drawTime) + ' | 有效期: ' + esc(r.expiryDate) + (r.verifyTime ? ' | 核销: ' + esc(r.verifyTime) : '') + '</div>' +
+          '</div>' +
+          '<span class="status-badge ' + sc + '">' + esc(r.status) + '</span>' +
+        '</div>';
+      }).join('');
+    }
+    
+    // WhatsApp
+    var waData = [];
+    function loadWAList() {
+      google.script.run.withSuccessHandler(function(r) {
+        waData = r.records || [];
+        renderWAList(waData);
+      }).getWAList(waFilter);
+    }
+    
+    function filterWA(f, btn) {
+      waFilter = f;
+      document.querySelectorAll('#tab-whatsapp .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      document.getElementById('waSearchInput').value = '';
+      document.getElementById('waSearchHint').style.display = 'none';
+      loadWAList();
+    }
+
+    function searchWA() {
+      var kw = document.getElementById('waSearchInput').value.trim();
+      if (!kw) { clearWASearch(); return; }
+      document.getElementById('waList').innerHTML = '<div class="empty-state"><p>搜索中...</p></div>';
+      google.script.run.withSuccessHandler(function(r) {
+        waData = r.records || [];
+        var hint = document.getElementById('waSearchHint');
+        hint.textContent = '🔍 搜索 "' + kw + '" 找到 ' + waData.length + ' 条记录';
+        hint.style.display = 'block';
+        renderWAList(waData);
+      }).searchWARecords(kw);
+    }
+
+    function clearWASearch() {
+      document.getElementById('waSearchInput').value = '';
+      document.getElementById('waSearchHint').style.display = 'none';
+      loadWAList();
+    }
+    
+    function renderWAList(records) {
+      var list = document.getElementById('waList');
+      if (!records || records.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">📱</div><p>暂无记录</p></div>';
+        return;
+      }
+      list.innerHTML = records.map(function(r, idx) {
+        var btn = '<button class="btn btn-sm btn-success" onclick="sendWAByIdx(' + idx + ')">' + (r.waStatus === '待发送' ? '📤发送' : '🔄重发') + '</button>';
+        var sentInfo = r.waStatus === '已发送' ? '<div style="color:#999;font-size:10px;margin-top:3px;">' + esc(r.waSentTime) + '</div>' : '';
+        return '<div class="list-item">' +
+          '<div class="main-info">' +
+            '<div class="title"><span class="code">' + esc(r.code) + '</span> ' + esc(r.prize) + '</div>' +
+            '<div class="subtitle">📱 ' + esc(r.phone) + '</div>' +
+            '<div class="meta">有效期: ' + esc(r.expiryDate) + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<span class="status-badge ' + (r.waStatus === '已发送' ? 'sent' : 'pending') + '">' + esc(r.waStatus) + '</span><br>' +
+            '<div style="margin-top:5px;">' + btn + '</div>' +
+            sentInfo +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function sendWAByIdx(idx) {
+      var r = waData[idx];
+      if (!r) return;
+      google.script.run.withSuccessHandler(function(res) {
+        if (res.success) {
+          window.open(res.waLink, '_blank');
+          clearCache();
+          loadWAList();
+          loadStats(true);
+        } else {
+          alert('❌ ' + res.message);
+        }
+      }).sendWhatsAppByCode(r.code, sessionToken);
+    }
+
+    function manualSendWA() {
+      var code = document.getElementById('waManualCode').value.trim().toUpperCase();
+      if (!code) { alert('请输入验证码'); return; }
+
+      google.script.run.withSuccessHandler(function(r) {
+        if (r.success) {
+          window.open(r.waLink, '_blank');
+          document.getElementById('waManualCode').value = '';
+          loadWAList();
+        } else {
+          alert('❌ ' + r.message);
+        }
+      }).sendWhatsAppByCode(code, sessionToken);
+    }
+
+    // WA模板
+    function loadWATemplates() {
+      google.script.run.withSuccessHandler(function(t) {
+        document.getElementById('waTplSend').value = t.send;
+        document.getElementById('waTplResend').value = t.resend;
+        document.getElementById('waTplReminder').value = t.reminder;
+      }).getWATemplates();
+    }
+
+    function saveWATemplates() {
+      var send = document.getElementById('waTplSend').value;
+      var resend = document.getElementById('waTplResend').value;
+      var reminder = document.getElementById('waTplReminder').value;
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ ' + r.message : '❌ 保存失败');
+      }).saveWATemplates(send, resend, reminder);
+    }
+
+    // 到期提醒
+    var expiryAlerts = [];
+    var expiryFilterType = 'all';
+
+    function loadExpiryAlerts() {
+      var list = document.getElementById('expiryAlertList');
+      list.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>检查中...</p></div>';
+      document.getElementById('expiryAlertSummary').style.display = 'none';
+      document.getElementById('expiryFilter').style.display = 'none';
+
+      google.script.run.withSuccessHandler(function(r) {
+        if (!r.success) {
+          if (r.message && r.message.indexOf('会话已过期') >= 0) { doLogout(); return; }
+          list.innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>' + esc(r.message) + '</p></div>';
+          return;
+        }
+        expiryAlerts = r.alerts || [];
+        if (expiryAlerts.length === 0) {
+          list.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>暂无7天内即将过期的积分或奖品</p></div>';
+          return;
+        }
+        // 统计
+        var prizeCount = 0, pointsCount = 0;
+        expiryAlerts.forEach(function(a) { if (a.type === 'prize') prizeCount++; else pointsCount++; });
+        var summary = document.getElementById('expiryAlertSummary');
+        summary.style.display = 'flex';
+        summary.style.cssText = 'display:flex;gap:10px;margin-bottom:12px;';
+        summary.innerHTML =
+          '<div style="flex:1;background:#fff3e0;border:2px solid #ff9800;border-radius:10px;padding:12px;text-align:center;">' +
+            '<div style="font-size:28px;font-weight:bold;color:#e65100;">' + prizeCount + '</div><div style="font-size:12px;color:#666;">🎫 奖品到期</div>' +
+          '</div>' +
+          '<div style="flex:1;background:#e3f2fd;border:2px solid #2196f3;border-radius:10px;padding:12px;text-align:center;">' +
+            '<div style="font-size:28px;font-weight:bold;color:#1565c0;">' + pointsCount + '</div><div style="font-size:12px;color:#666;">💰 积分到期</div>' +
+          '</div>';
+        document.getElementById('expiryFilter').style.display = 'flex';
+        expiryFilterType = 'all';
+        document.querySelectorAll('#expiryFilter .filter-btn').forEach(function(b, i) { b.className = 'filter-btn' + (i === 0 ? ' active' : ''); });
+        renderExpiryAlerts();
+      }).withFailureHandler(function() {
+        list.innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>检查失败</p></div>';
+      }).getExpiryAlerts(sessionToken);
+    }
+
+    function filterExpiry(type, btn) {
+      expiryFilterType = type;
+      document.querySelectorAll('#expiryFilter .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      renderExpiryAlerts();
+    }
+
+    function renderExpiryAlerts() {
+      var list = document.getElementById('expiryAlertList');
+      var filtered = expiryAlerts.filter(function(a) {
+        return expiryFilterType === 'all' || a.type === expiryFilterType;
+      });
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>暂无此类到期提醒</p></div>';
+        return;
+      }
+      list.innerHTML = filtered.map(function(a, idx) {
+        var realIdx = expiryAlerts.indexOf(a);
+        var urgency = a.daysLeft <= 1 ? '#f44336' : (a.daysLeft <= 3 ? '#ff9800' : '#ff9800');
+        var daysText = a.daysLeft === 0 ? '今天到期!' : a.daysLeft + '天后到期';
+        var typeIcon = a.type === 'prize' ? '🎫' : '💰';
+        var typeLabel = a.type === 'prize' ? esc(a.prize) : (a.points + '积分即将过期');
+        var codeInfo = a.code ? '<span class="code">' + esc(a.code) + '</span> ' : '';
+
+        return '<div class="list-item">' +
+          '<div class="main-info">' +
+            '<div class="title">' + typeIcon + ' ' + codeInfo + typeLabel + '</div>' +
+            '<div class="subtitle">📱 ' + esc(a.phone) + (a.name ? ' · ' + esc(a.name) : '') + '</div>' +
+            '<div class="meta" style="color:' + urgency + ';font-weight:bold;">⚠️ ' + daysText + ' (' + esc(a.expiry) + ')</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<button class="btn btn-sm" style="background:#25D366;color:#fff;" onclick="sendExpiryAlert(' + realIdx + ')">📤 发提醒</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function sendExpiryAlert(idx) {
+      var a = expiryAlerts[idx];
+      if (!a || !a.waLink) return;
+      window.open(a.waLink, '_blank');
+    }
+
+    // 奖品
+    function loadPrizes() {
+      google.script.run.withSuccessHandler(function(prizes) {
+        // 计算总权重（仅启用且有库存的）
+        var totalWeight = 0;
+        prizes.forEach(function(p) {
+          if (p.status === '启用' && p.remaining > 0 && p.weight > 0) totalWeight += p.weight;
+        });
+
+        var tbody = document.getElementById('prizeTableBody');
+        tbody.innerHTML = prizes.map(function(p, i) {
+          var prob = (p.status === '启用' && p.remaining > 0 && p.weight > 0 && totalWeight > 0)
+            ? (p.weight / totalWeight * 100).toFixed(1) + '%'
+            : '-';
+          var probColor = prob === '-' ? '#999' : (parseFloat(prob) >= 20 ? '#2e7d32' : (parseFloat(prob) >= 10 ? '#e65100' : '#8b0000'));
+          return '<tr data-row="' + p.row + '">' +
+            '<td style="font-weight:bold;color:#8b0000;">' + (i + 1) + '</td>' +
+            '<td><input type="text" class="p-icon" value="' + esc(p.icon) + '" style="width:50px;text-align:center;font-size:18px;"></td>' +
+            '<td><input type="text" class="p-name" value="' + esc(p.name) + '" style="min-width:140px;"></td>' +
+            '<td><input type="number" class="p-stock" value="' + p.totalStock + '" style="width:65px;"></td>' +
+            '<td style="text-align:center;">' + p.usedStock + '</td>' +
+            '<td style="color:' + (p.remaining <= 5 ? 'red' : 'green') + ';font-weight:bold;text-align:center;font-size:16px;">' + p.remaining + '</td>' +
+            '<td><input type="number" class="p-weight" value="' + p.weight + '" style="width:65px;"></td>' +
+            '<td style="color:' + probColor + ';font-weight:bold;text-align:center;font-size:14px;">' + prob + '</td>' +
+            '<td><select class="p-grand"><option value="0"' + (!p.isGrand ? ' selected' : '') + '>否</option><option value="1"' + (p.isGrand ? ' selected' : '') + '>是</option></select></td>' +
+            '<td><select class="p-status"><option' + (p.status === '启用' ? ' selected' : '') + '>启用</option><option' + (p.status === '停用' ? ' selected' : '') + '>停用</option></select></td>' +
+          '</tr>';
+        }).join('');
+      }).getPrizeConfig();
+    }
+    
+    function savePrizes() {
+      var rows = document.querySelectorAll('#prizeTableBody tr');
+      var prizes = [];
+      rows.forEach(function(tr) {
+        prizes.push({
+          row: parseInt(tr.getAttribute('data-row')),
+          icon: tr.querySelector('.p-icon').value,
+          name: tr.querySelector('.p-name').value,
+          totalStock: parseInt(tr.querySelector('.p-stock').value) || 0,
+          weight: parseInt(tr.querySelector('.p-weight').value) || 0,
+          isGrand: tr.querySelector('.p-grand').value === '1',
+          status: tr.querySelector('.p-status').value
+        });
+      });
+      
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ 保存成功' : '❌ 保存失败');
+        loadPrizes();
+      }).savePrizeConfig(prizes);
+    }
+    
+    function addNewPrize() {
+      var name = document.getElementById('newPrizeName').value.trim();
+      if (!name) { alert('请输入奖品名称'); return; }
+      
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ 添加成功' : '❌ 添加失败');
+        if (r.success) {
+          document.getElementById('newPrizeName').value = '';
+          document.getElementById('newPrizeIcon').value = '';
+          loadPrizes();
+        }
+      }).addPrize(
+        name,
+        document.getElementById('newPrizeIcon').value || '🎁',
+        parseInt(document.getElementById('newPrizeStock').value) || 50,
+        parseInt(document.getElementById('newPrizeWeight').value) || 10,
+        parseInt(document.getElementById('newPrizeValue').value) || 10,
+        document.getElementById('newPrizeGrand').value === '1'
+      );
+    }
+    
+    // 员工
+    var staffData = [];
+    function loadStaff() {
+      google.script.run.withSuccessHandler(function(staff) {
+        staffData = staff;
+        var list = document.getElementById('staffList');
+        list.innerHTML = staff.map(function(s, idx) {
+          return '<div class="list-item" style="flex-wrap:wrap;">' +
+            '<div class="main-info">' +
+              '<div class="title">' + esc(s.name) + ' <small style="color:#999;">@' + esc(s.username) + '</small></div>' +
+              '<div class="meta">最后登录: ' + esc(s.lastLogin) + '</div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<span class="role-badge ' + esc(s.role) + '">' + esc(s.role) + '</span>' +
+              '<button class="btn btn-sm" style="background:#2196f3;color:#fff;" onclick="editStaffByIdx(' + idx + ')">✏️</button>' +
+              '<button class="btn btn-sm" style="background:#f44336;color:#fff;" onclick="deleteStaffByIdx(' + idx + ')">🗑️</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }).getStaffList();
+    }
+    
+    function addNewStaff() {
+      var name = document.getElementById('newStaffName').value.trim();
+      var username = document.getElementById('newStaffUsername').value.trim();
+      var password = document.getElementById('newStaffPassword').value;
+      var role = document.getElementById('newStaffRole').value;
+      
+      if (!name || !username || !password) { alert('请填写完整信息'); return; }
+      
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ 添加成功' : '❌ 添加失败');
+        if (r.success) {
+          document.getElementById('newStaffName').value = '';
+          document.getElementById('newStaffUsername').value = '';
+          document.getElementById('newStaffPassword').value = '';
+          loadStaff();
+        }
+      }).addStaff(name, username, password, role);
+    }
+
+    function editStaffByIdx(idx) {
+      var s = staffData[idx];
+      if (!s) return;
+      document.getElementById('editStaffRow').value = s.row;
+      document.getElementById('editStaffName').value = s.name;
+      document.getElementById('editStaffUsername').value = s.username;
+      document.getElementById('editStaffPassword').value = '';
+      document.getElementById('editStaffRole').value = s.role;
+      document.getElementById('editStaffModal').style.display = 'flex';
+    }
+
+    function closeEditStaffModal() {
+      document.getElementById('editStaffModal').style.display = 'none';
+    }
+
+    function saveEditStaff() {
+      var row = parseInt(document.getElementById('editStaffRow').value);
+      var name = document.getElementById('editStaffName').value.trim();
+      var username = document.getElementById('editStaffUsername').value.trim();
+      var password = document.getElementById('editStaffPassword').value;
+      var role = document.getElementById('editStaffRole').value;
+      if (!name || !username) { alert('请填写姓名和账号'); return; }
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ ' + r.message : '❌ 更新失败');
+        if (r.success) { closeEditStaffModal(); loadStaff(); }
+      }).updateStaff(row, name, username, password, role);
+    }
+
+    function deleteStaffByIdx(idx) {
+      var s = staffData[idx];
+      if (!s) return;
+      if (!confirm('确定要删除员工「' + s.name + '」吗？此操作不可恢复。')) return;
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ ' + r.message : '❌ 删除失败');
+        if (r.success) loadStaff();
+      }).deleteStaff(s.row);
+    }
+
+    // ==================== 音乐设置 ====================
+    var testAudio = null;
+    
+    function loadMusicSettings() {
+      google.script.run.withSuccessHandler(function(settings) {
+        document.getElementById('bgMusicUrl').value = settings.bgMusicUrl || '';
+        document.getElementById('firecrackerUrl').value = settings.firecrackerUrl || '';
+        document.getElementById('musicEnabled').value = settings.musicEnabled !== false ? 'true' : 'false';
+      }).getMusicSettings();
+    }
+    
+    function saveMusicSettings() {
+      var bgUrl = document.getElementById('bgMusicUrl').value.trim();
+      var fcUrl = document.getElementById('firecrackerUrl').value.trim();
+      var enabled = document.getElementById('musicEnabled').value === 'true';
+      
+      google.script.run.withSuccessHandler(function(r) {
+        alert(r.success ? '✅ ' + r.message : '❌ 保存失败');
+      }).saveMusicSettings(bgUrl, fcUrl, enabled);
+    }
+    
+    function convertDriveUrl(url) {
+      var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match) return 'https://drive.google.com/uc?export=download&id=' + match[1];
+      if (url.indexOf('drive.google.com') >= 0 && url.indexOf('id=') >= 0) {
+        var idMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
+        if (idMatch) return 'https://drive.google.com/uc?export=download&id=' + idMatch[1];
+      }
+      return url;
+    }
+
+    function testPlayAudio(url, label) {
+      var result = document.getElementById('musicTestResult');
+      if (!url) {
+        result.innerHTML = '<span style="color:#e65100;">⚠️ 请先输入' + label + 'URL</span>';
+        return;
+      }
+      stopTestMusic();
+      url = convertDriveUrl(url);
+      result.innerHTML = '<span style="color:#666;">⏳ 加载中...</span>';
+
+      testAudio = new Audio();
+      testAudio.preload = 'auto';
+
+      testAudio.oncanplaythrough = function() {
+        result.innerHTML = '<span style="color:#2e7d32;">✅ ' + label + '加载成功，正在播放...</span>';
+        testAudio.play().catch(function() {
+          result.innerHTML = '<span style="color:#e65100;">⚠️ 浏览器阻止自动播放，请先点击页面任意位置再试</span>';
+        });
+      };
+      testAudio.onerror = function() {
+        // Google Drive URL may fail due to CORS - try fetching via server proxy
+        if (url.indexOf('drive.google.com') >= 0) {
+          result.innerHTML = '<span style="color:#666;">⏳ Google Drive链接需通过服务器代理加载...</span>';
+          google.script.run.withSuccessHandler(function(dataUrl) {
+            if (dataUrl) {
+              testAudio = new Audio(dataUrl);
+              testAudio.oncanplaythrough = function() {
+                result.innerHTML = '<span style="color:#2e7d32;">✅ ' + label + '加载成功（服务器代理），正在播放...</span>';
+                testAudio.play().catch(function() {
+                  result.innerHTML = '<span style="color:#e65100;">⚠️ 浏览器阻止自动播放，请先点击页面任意位置再试</span>';
+                });
+              };
+              testAudio.onerror = function() {
+                result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '加载失败<br><span style="font-size:11px;color:#999;">请确认文件已设为「知道链接的人都可查看」<br>或尝试使用其他音乐托管服务</span></span>';
+              };
+            } else {
+              result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '加载失败<br><span style="font-size:11px;color:#999;">请确认Google Drive文件已设为「知道链接的人都可查看」</span></span>';
+            }
+          }).withFailureHandler(function() {
+            result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '服务器代理加载失败</span>';
+          }).proxyAudioUrl(url);
+        } else {
+          result.innerHTML = '<span style="color:#c62828;">❌ ' + label + '加载失败<br><span style="font-size:11px;color:#999;">请检查URL是否有效，或尝试其他音乐托管服务</span></span>';
+        }
+      };
+      testAudio.src = url;
+    }
+
+    function testBgMusic() {
+      testPlayAudio(document.getElementById('bgMusicUrl').value.trim(), '背景音乐');
+    }
+
+    function testFirecracker() {
+      testPlayAudio(document.getElementById('firecrackerUrl').value.trim(), '鞭炮音效');
+    }
+
+    function stopTestMusic() {
+      if (testAudio) {
+        testAudio.pause();
+        testAudio.src = '';
+        testAudio = null;
+      }
+      document.getElementById('musicTestResult').innerHTML = '';
+    }
+
+    // ==================== 压力测试 ====================
+    function runLoadTest() {
+      var btn = document.getElementById('loadTestBtn');
+      var result = document.getElementById('loadTestResult');
+      btn.disabled = true; btn.textContent = '⏳ 测试中... (约2-5分钟)';
+      result.style.display = 'block';
+      result.innerHTML = '<span style="color:#666;">⏳ 正在注册100个测试用户并执行抽奖，请耐心等待...</span>';
+
+      google.script.run.withSuccessHandler(function(r) {
+        btn.disabled = false; btn.textContent = '🚀 开始测试 (100人)';
+        var prizeList = Object.keys(r.prizeDistribution).map(function(k) {
+          return k + ': ' + r.prizeDistribution[k] + '次';
+        }).join('<br>');
+        var errorList = r.errors.length > 0 ? r.errors.join('<br>') : '无';
+
+        result.innerHTML =
+          '<h4 style="color:#8b0000;margin-bottom:10px;">📊 测试结果</h4>' +
+          '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">' +
+            '<div style="background:#e8f5e9;padding:10px;border-radius:8px;text-align:center;">' +
+              '<div style="font-size:12px;color:#666;">✅ 成功</div><div style="font-size:24px;font-weight:bold;color:#2e7d32;">' + r.successCount + '</div>' +
+            '</div>' +
+            '<div style="background:#ffebee;padding:10px;border-radius:8px;text-align:center;">' +
+              '<div style="font-size:12px;color:#666;">❌ 失败</div><div style="font-size:24px;font-weight:bold;color:#c62828;">' + r.failCount + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<b>⏱ 总耗时:</b> ' + r.totalTime + '<br>' +
+          '<b>⚡ 平均:</b> ' + r.avgTime + ' | <b>最快:</b> ' + r.minTime + ' | <b>最慢:</b> ' + r.maxTime + '<br>' +
+          '<b>📦 库存验证:</b> ' + r.matchSuccess + '<br>' +
+          '<b>⚠️ 超发检查:</b> ' + r.stockIssues.join(', ') + '<br>' +
+          '<hr style="margin:10px 0;">' +
+          '<b>🎁 奖品分布:</b><br>' + prizeList + '<br>' +
+          (r.errors.length > 0 ? '<hr style="margin:10px 0;"><b>❌ 错误:</b><br><span style="color:#c62828;font-size:12px;">' + errorList + '</span>' : '');
+
+        clearCache();
+        loadDashboard(true); // 刷新统计
+      }).withFailureHandler(function(e) {
+        btn.disabled = false; btn.textContent = '🚀 开始测试 (100人)';
+        result.innerHTML = '<span style="color:#c62828;">❌ 测试失败: ' + e + '</span>';
+      }).loadTest100();
+    }
+
+    function cleanTest() {
+      var btn = document.getElementById('cleanTestBtn');
+      btn.disabled = true; btn.textContent = '🧹 清理中...';
+      google.script.run.withSuccessHandler(function(msg) {
+        btn.disabled = false; btn.textContent = '🧹 清理测试数据';
+        alert(msg);
+        clearCache();
+        loadDashboard(true);
+      }).withFailureHandler(function(e) {
+        btn.disabled = false; btn.textContent = '🧹 清理测试数据';
+        alert('清理失败: ' + e);
+      }).cleanTestData();
+    }
+
+    // ==================== 统计面板 ====================
+    function loadDashboard(force) {
+      if (!force) {
+        var cached = getCached('dashboard');
+        if (cached) { renderDashboard(cached); return; }
+      }
+      google.script.run.withSuccessHandler(function(s) {
+        setCache('dashboard', s);
+        renderDashboard(s);
+      }).withFailureHandler(function() {}).getDetailedStats();
+    }
+    function renderDashboard(s) {
+        // 今日概览
+        document.getElementById('dsTodayUsers').textContent = s.todayNewUsers;
+        document.getElementById('dsTodayDraws').textContent = s.todayDraws;
+        document.getElementById('dsTodayVerified').textContent = s.todayVerified;
+        document.getElementById('dsTotalPending').textContent = s.totalPending;
+
+        // 整体数据
+        document.getElementById('dsTotalUsers').textContent = s.totalUsers;
+        document.getElementById('dsTotalDraws').textContent = s.totalDraws;
+        document.getElementById('dsVerifyRate').textContent = s.verifyRate + '%';
+
+        // 7天趋势柱状图
+        renderBarChart(s.dates, s.drawCounts, s.userCounts);
+
+        // 奖品统计
+        renderPrizeChart(s.prizeStats);
+    }
+
+    function renderBarChart(dates, draws, users) {
+      var area = document.getElementById('chartArea');
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
+        '<tr style="background:#f5f0f0;"><th style="padding:10px;text-align:left;color:#8b0000;">日期</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">🎰 抽奖</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">📱 新用户</th></tr>';
+
+      for (var i = 0; i < dates.length; i++) {
+        var isToday = (i === dates.length - 1);
+        var bg = isToday ? '#fff9e6' : (i % 2 === 0 ? '#fff' : '#fafafa');
+        var drawColor = draws[i] > 10 ? '#c62828' : (draws[i] > 0 ? '#8b0000' : '#ccc');
+        var userColor = users[i] > 10 ? '#1565c0' : (users[i] > 0 ? '#2196f3' : '#ccc');
+        html += '<tr style="background:' + bg + ';' + (isToday ? 'font-weight:bold;' : '') + '">' +
+          '<td style="padding:10px;border-bottom:1px solid #f0f0f0;">' + dates[i] + (isToday ? ' <span style="font-size:11px;color:#ff9800;">今天</span>' : '') + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;color:' + drawColor + ';font-size:18px;font-weight:bold;">' + draws[i] + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;color:' + userColor + ';font-size:18px;font-weight:bold;">' + users[i] + '</td>' +
+        '</tr>';
+      }
+
+      // 合计行
+      var totalD = draws.reduce(function(a, b) { return a + b; }, 0);
+      var totalU = users.reduce(function(a, b) { return a + b; }, 0);
+      html += '<tr style="background:#f5f0f0;font-weight:bold;">' +
+        '<td style="padding:10px;">合计</td>' +
+        '<td style="padding:10px;text-align:center;color:#8b0000;font-size:18px;">' + totalD + '</td>' +
+        '<td style="padding:10px;text-align:center;color:#2196f3;font-size:18px;">' + totalU + '</td>' +
+      '</tr></table>';
+      area.innerHTML = html;
+    }
+
+    function renderPrizeChart(prizeStats) {
+      var area = document.getElementById('prizeChartArea');
+      if (!prizeStats || prizeStats.length === 0) {
+        area.innerHTML = '<p style="color:#999;text-align:center;">暂无奖品数据</p>';
+        return;
+      }
+
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
+        '<tr style="background:#f5f0f0;"><th style="padding:10px;text-align:left;color:#8b0000;">奖品</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">已发</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">总库存</th>' +
+        '<th style="padding:10px;text-align:center;color:#8b0000;">剩余</th>' +
+        '<th style="padding:10px;text-align:right;color:#8b0000;min-width:80px;">进度</th></tr>';
+
+      prizeStats.forEach(function(p, i) {
+        var pct = p.total > 0 ? Math.round(p.used / p.total * 100) : 0;
+        var barColor = p.remaining <= 0 ? '#999' : (p.remaining <= 5 ? '#f44336' : '#4caf50');
+        var remColor = p.remaining <= 0 ? '#999' : (p.remaining <= 5 ? '#f44336' : '#2e7d32');
+        var bg = i % 2 === 0 ? '#fff' : '#fafafa';
+        var off = p.status === '停用';
+        html += '<tr style="background:' + bg + ';' + (off ? 'opacity:0.5;' : '') + '">' +
+          '<td style="padding:10px;border-bottom:1px solid #f0f0f0;white-space:nowrap;">' + esc(p.icon) + ' ' + esc(p.name) + (off ? ' <span style="color:#999;font-size:11px;">(停)</span>' : '') + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;font-weight:bold;">' + p.used + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;color:#666;">' + p.total + '</td>' +
+          '<td style="padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;font-weight:bold;color:' + remColor + ';">' + p.remaining + '</td>' +
+          '<td style="padding:10px;border-bottom:1px solid #f0f0f0;">' +
+            '<div style="background:#eee;border-radius:6px;height:16px;overflow:hidden;position:relative;min-width:70px;">' +
+              '<div style="background:' + barColor + ';height:100%;width:' + pct + '%;border-radius:6px;"></div>' +
+              '<div style="position:absolute;top:0;left:0;right:0;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:#333;">' + pct + '%</div>' +
+            '</div>' +
+          '</td></tr>';
+      });
+
+      html += '</table>';
+      area.innerHTML = html;
+    }
+
+    // ==================== QR扫码 ====================
+    var qrScanner = null;
+    var scannerMode = '';
+
+    function startQRScanner(mode) {
+      scannerMode = mode;
+      document.getElementById('qrScannerContainer').classList.add('show');
+
+      qrScanner = new Html5Qrcode('qr-reader');
+      qrScanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        function() {}
+      ).catch(function(err) {
+        alert('无法启动摄像头: ' + err);
+        stopQRScanner();
+      });
+    }
+
+    function onScanSuccess(decodedText) {
+      var code = decodedText.trim().toUpperCase();
+      stopQRScanner();
+
+      if (scannerMode === 'verify') {
+        document.getElementById('verifyCode').value = code;
+        queryCode();
+      } else if (scannerMode === 'whatsapp') {
+        document.getElementById('waManualCode').value = code;
+        alert('已扫描验证码: ' + code);
+      }
+    }
+
+    function stopQRScanner() {
+      document.getElementById('qrScannerContainer').classList.remove('show');
+      if (qrScanner) {
+        qrScanner.stop().then(function() {
+          qrScanner.clear();
+          qrScanner = null;
+        }).catch(function() {
+          qrScanner = null;
+        });
+      }
+    }
+    // ===== 顾客查询 =====
+    function doSearchCustomer() {
+      var phone = document.getElementById('custSearchPhone').value.trim();
+      if (!phone) { alert('请输入手机号'); return; }
+      var div = document.getElementById('custResult');
+      div.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">查询中...</div>';
+
+      google.script.run.withSuccessHandler(function(r) {
+        if (!r.success) { div.innerHTML = '<div class="card" style="color:#cc0000;text-align:center;padding:20px;">' + esc(r.message || '未找到用户') + '</div>'; return; }
+        var u = r.user;
+        var html = '<div class="card">';
+        html += '<h3>👤 ' + esc(u.name || '未命名') + '</h3>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">';
+        html += '<div><b>手机:</b> ' + esc(u.phone) + '</div>';
+        html += '<div><b>有效积分:</b> <span style="color:#4caf50;font-weight:bold;">' + r.activePoints + '</span></div>';
+        html += '<div><b>邀请码:</b> ' + esc(u.inviteCode) + '</div>';
+        html += '<div><b>邀请人数:</b> ' + (u.inviteCount || 0) + '</div>';
+        html += '</div>';
+
+        // 积分明细
+        if (r.pointsDetail && r.pointsDetail.length > 0) {
+          html += '<h3 style="margin-top:16px;">💰 积分明细</h3>';
+          html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><tr style="background:#f5f5f5;"><th style="padding:8px;text-align:left;">日期</th><th>来源</th><th>原始</th><th>剩余</th><th>过期</th></tr>';
+          for (var d = 0; d < r.pointsDetail.length; d++) {
+            var pt = r.pointsDetail[d];
+            var rowStyle = pt.expired ? 'color:#ccc;text-decoration:line-through;' : '';
+            html += '<tr style="border-bottom:1px solid #eee;' + rowStyle + '"><td style="padding:6px 8px;">' + esc(pt.date) + '</td><td style="text-align:center;">' + esc(pt.source) + '</td><td style="text-align:center;">' + pt.original + '</td><td style="text-align:center;font-weight:bold;">' + pt.remaining + '</td><td style="text-align:center;font-size:12px;">' + esc(pt.expiry) + '</td></tr>';
+          }
+          html += '</table>';
+        }
+
+        // 验证码列表
+        if (r.prizes && r.prizes.length > 0) {
+          html += '<h3 style="margin-top:16px;">🎫 验证码 / 奖品</h3>';
+          for (var i = 0; i < r.prizes.length; i++) {
+            var p = r.prizes[i];
+            var sc = p.status === '已核销' ? '#4caf50' : (p.status === '已过期' ? '#f44336' : '#ff9800');
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid #eee;">';
+            html += '<div><b>' + esc(p.prize) + '</b><br><span style="font-family:monospace;color:#8b0000;">' + esc(p.code) + '</span> | 到期: ' + esc(p.expiryDate) + '</div>';
+            html += '<div style="display:flex;align-items:center;gap:8px;">';
+            html += '<span style="color:' + sc + ';font-weight:bold;font-size:12px;">' + esc(p.status) + '</span>';
+            if (p.status === '未核销') {
+              html += '<button onclick="custResendWA(\'' + esc(p.code) + '\')" style="padding:6px 12px;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">发WA</button>';
+            }
+            html += '</div></div>';
+          }
+        } else {
+          html += '<div style="text-align:center;color:#ccc;padding:16px;">暂无奖品记录</div>';
+        }
+        html += '</div>';
+        div.innerHTML = html;
+      }).withFailureHandler(function() {
+        div.innerHTML = '<div class="card" style="color:#cc0000;text-align:center;">查询失败</div>';
+      }).queryUserPrizes(phone);
+    }
+
+    function custResendWA(code) {
+      google.script.run.withSuccessHandler(function(res) {
+        if (res.success) {
+          window.open(res.waLink, '_blank');
+          alert('已打开WhatsApp，请手动发送');
+        } else {
+          alert(res.message);
+        }
+      }).withFailureHandler(function() {
+        alert('发送失败');
+      }).sendWhatsAppByCode(code, sessionToken);
+    }
+
+    // ===== 积分管理 =====
+    function doAddPoints() {
+      var phone = document.getElementById('ptPhone').value.trim();
+      var pts = document.getElementById('ptAmount').value;
+      if (!phone) { alert('请输入手机号'); return; }
+      if (!pts || pts < 1) { alert('请输入有效积分数'); return; }
+
+      var div = document.getElementById('ptResult');
+      div.innerHTML = '<div style="text-align:center;padding:10px;color:#999;">处理中...</div>';
+
+      google.script.run.withSuccessHandler(function(r) {
+        div.innerHTML = '<div class="card" style="text-align:center;color:' + (r.success ? '#4caf50' : '#cc0000') + ';padding:16px;font-weight:bold;">' + esc(r.message) + '</div>';
+        if (r.success) {
+          document.getElementById('ptPhone').value = '';
+          document.getElementById('ptAmount').value = '1';
+        }
+      }).withFailureHandler(function() {
+        div.innerHTML = '<div class="card" style="color:#cc0000;text-align:center;">操作失败</div>';
+      }).addPointsManual(phone, pts, sessionToken);
+    }
+
+    function doAddPointsAll() {
+      var pts = document.getElementById('ptAllAmount').value;
+      if (!pts || pts < 1) { alert('请输入有效积分数'); return; }
+      if (!confirm('确定给所有会员各加 ' + pts + ' 积分？此操作不可撤销！')) return;
+
+      var div = document.getElementById('ptResult');
+      div.innerHTML = '<div style="text-align:center;padding:10px;color:#999;">批量处理中，请稍候...</div>';
+
+      google.script.run.withSuccessHandler(function(r) {
+        div.innerHTML = '<div class="card" style="text-align:center;color:' + (r.success ? '#4caf50' : '#cc0000') + ';padding:16px;font-weight:bold;">' + esc(r.message) + '</div>';
+      }).withFailureHandler(function() {
+        div.innerHTML = '<div class="card" style="color:#cc0000;text-align:center;">操作失败</div>';
+      }).addPointsToAll(pts, sessionToken);
+    }
+
+    function togglePasswordVisibility(inputId) {
+      var input = document.getElementById(inputId);
+      var button = event.target.closest('button');
+      if (input.type === 'password') {
+        input.type = 'text';
+        button.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        button.textContent = '👁️';
+      }
+    }
+  </script>
+</body>
+</html>

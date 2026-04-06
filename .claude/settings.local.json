@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python3:*)",
+      "Bash(where:*)",
+      "Bash(py:*)",
+      "Bash(node --version:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(\"C:/Users/Pei Shee/AppData/Local/Programs/Python/Python312/python.exe\":*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs\")",
+      "Bash(npm:*)",
+      "Bash(clasp login:*)",
+      "Bash(npx:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd Lucky Draw System source code from Google Apps Script\n\nBackup of the Hui Hotpot \\(张崇会火锅\\) Lucky Draw System v3.0\nsource code from Google Apps Script to GitHub for version control.\n\nFiles:\n- src/Code.js: Server-side logic \\(lottery draw, user management, admin\\)\n- src/Lottery.html: User-facing lottery wheel page\n- src/Admin.html: Admin panel for prize/user/staff management\n- src/appsscript.json: Apps Script manifest\n- .clasp.json: Google clasp CLI config for syncing\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Add LDS Excel data file\n\nHui Hotpot Lucky Draw System v2.1 data file containing:\n- Prize configuration\n- User data\n- Winning records\n- System settings\n- Staff accounts\n- Operation logs\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(gh pr create --title \"Add Lucky Draw System source code backup\" --body \"$\\(cat <<''EOF''\n## Summary\n- Cloned all source code from Google Apps Script project to GitHub for version control\n- Added 3 source files: Code.js \\(server logic\\), Lottery.html \\(user page\\), Admin.html \\(admin panel\\)\n- Added clasp config for future syncing between GitHub and Apps Script\n- Added .gitignore for clean tracking\n\n## Test plan\n- [x] All 4 source files \\(Code.js, Lottery.html, Admin.html, appsscript.json\\) present in src/\n- [x] .clasp.json configured with correct scriptId and rootDir\n- [ ] Verify live Apps Script web app is unaffected\n- [ ] Run `clasp pull` to confirm files match latest Apps Script version\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\nEOF\n\\)\" --base main)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh pr create --title \"Add Lucky Draw System source code backup\" --body \"$\\(cat <<''EOF''\n## Summary\n- Cloned all source code from Google Apps Script project to GitHub for version control\n- Added 3 source files: Code.js \\(server logic\\), Lottery.html \\(user page\\), Admin.html \\(admin panel\\)\n- Added clasp config for future syncing between GitHub and Apps Script\n- Added .gitignore for clean tracking\n\n## Test plan\n- [x] All 4 source files \\(Code.js, Lottery.html, Admin.html, appsscript.json\\) present in src/\n- [x] .clasp.json configured with correct scriptId and rootDir\n- [ ] Verify live Apps Script web app is unaffected\n- [ ] Run clasp pull to confirm files match latest Apps Script version\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\nEOF\n\\)\" --base main)",
+      "Bash(gh auth login:*)",
+      "Bash(git fetch:*)",
+      "Bash(git rebase:*)",
+      "Bash(git commit:*)",
+      "Bash(cmd /c \"npx @google/clasp push\")",
+      "Bash(cmd /c \"where node && where npm && where npx\")",
+      "Bash(cmd /c \"where node\")",
+      "Bash(cmd /c \"where npm\")",
+      "Bash(\"C:/Program Files/nodejs/npx.cmd\" @google/clasp push)",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\":*)",
+      "Bash(node -e:*)",
+      "Bash(export PATH=\"/c/Program Files/nodejs:/c/Windows/system32:$PATH\")"
+    ]
+  }
+}
